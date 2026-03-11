@@ -256,20 +256,20 @@
   </div>
   <div class="pin-error-msg" id="pinError"></div>
   <div class="pin-keypad" id="pinKeypad">
-    <button class="pin-key" data-pin="1">1</button>
-    <button class="pin-key" data-pin="2">2</button>
-    <button class="pin-key" data-pin="3">3</button>
-    <button class="pin-key" data-pin="4">4</button>
-    <button class="pin-key" data-pin="5">5</button>
-    <button class="pin-key" data-pin="6">6</button>
-    <button class="pin-key" data-pin="7">7</button>
-    <button class="pin-key" data-pin="8">8</button>
-    <button class="pin-key" data-pin="9">9</button>
+    <button class="pin-key" onclick="pinKey('1')">1</button>
+    <button class="pin-key" onclick="pinKey('2')">2</button>
+    <button class="pin-key" onclick="pinKey('3')">3</button>
+    <button class="pin-key" onclick="pinKey('4')">4</button>
+    <button class="pin-key" onclick="pinKey('5')">5</button>
+    <button class="pin-key" onclick="pinKey('6')">6</button>
+    <button class="pin-key" onclick="pinKey('7')">7</button>
+    <button class="pin-key" onclick="pinKey('8')">8</button>
+    <button class="pin-key" onclick="pinKey('9')">9</button>
     <button class="pin-key empty" disabled></button>
-    <button class="pin-key" data-pin="0">0</button>
-    <button class="pin-key del" id="pinDelBtn">⌫</button>
+    <button class="pin-key" onclick="pinKey('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
   </div>
-  <div class="pin-change-link" id="pinChangeLink" style="display:none">Ganti PIN</div>
+  <div class="pin-change-link" id="pinChangeLink" style="display:none" onclick="startChangePin()">Ganti PIN</div>
 </div>
 
 <!-- MAIN APP -->
@@ -402,6 +402,131 @@
 
 <div class="toast" id="toast"></div>
 
+<script>
+// PIN globals - diakses dari onclick HTML dan dari module
+var pinInput = '';
+var pinFirst = '';
+var savedPin = '';
+var pinMode  = 'login';
+var pinUnlocked = false;
+
+function pinKey(k) {
+  if (pinInput.length >= 4) return;
+  pinInput += k;
+  updatePinDots();
+  if (pinInput.length === 4) setTimeout(processPinInput, 150);
+}
+function pinDel() {
+  pinInput = pinInput.slice(0,-1);
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+}
+function updatePinDots(isError) {
+  for(var i=0;i<4;i++) {
+    var dot = document.getElementById('dot'+i);
+    dot.className = 'pin-dot';
+    if (isError) dot.classList.add('error');
+    else if (i < pinInput.length) dot.classList.add('filled');
+  }
+}
+function processPinInput() {
+  if (pinMode === 'login') {
+    if (pinInput === savedPin) {
+      sessionStorage.setItem('ab_unlocked','1');
+      document.getElementById('pinScreen').classList.add('hidden');
+      pinUnlocked = true;
+      if(typeof updateHeader==='function') updateHeader();
+      if(typeof renderJual==='function') renderJual();
+    } else {
+      document.getElementById('pinError').textContent = 'PIN salah, coba lagi';
+      updatePinDots(true);
+      setTimeout(function(){ pinInput=''; updatePinDots(); document.getElementById('pinError').textContent=''; }, 800);
+    }
+  } else if (pinMode === 'setup') {
+    pinFirst = pinInput; pinInput = '';
+    pinMode = 'setup2';
+    document.getElementById('pinTitle').textContent = 'Konfirmasi PIN';
+    document.getElementById('pinSubtitle').textContent = 'Masukkan PIN yang sama sekali lagi';
+    updatePinDots();
+  } else if (pinMode === 'setup2') {
+    if (pinInput === pinFirst) {
+      savedPin = pinInput;
+      pinFirst = ''; pinInput = '';
+      if(typeof fbSavePin==='function') fbSavePin(savedPin);
+      sessionStorage.setItem('ab_unlocked','1');
+      document.getElementById('pinScreen').classList.add('hidden');
+      pinUnlocked = true;
+      if(typeof showToast==='function') showToast('✓ PIN berhasil dibuat!');
+      if(typeof updateHeader==='function') updateHeader();
+      if(typeof renderJual==='function') renderJual();
+    } else {
+      document.getElementById('pinError').textContent = 'PIN tidak cocok, ulangi dari awal';
+      updatePinDots(true);
+      setTimeout(function(){ pinInput=''; pinFirst=''; pinMode='setup'; document.getElementById('pinTitle').textContent='Buat PIN baru (4 digit)'; updatePinDots(); document.getElementById('pinError').textContent=''; }, 1000);
+    }
+  } else if (pinMode === 'change') {
+    if (pinInput === savedPin) {
+      pinInput=''; pinMode='change2'; pinFirst='';
+      document.getElementById('pinTitle').textContent='Masukkan PIN baru';
+      document.getElementById('pinSubtitle').textContent='Buat PIN baru kamu';
+      updatePinDots();
+    } else {
+      document.getElementById('pinError').textContent='PIN lama salah';
+      updatePinDots(true);
+      setTimeout(function(){ pinInput=''; updatePinDots(); document.getElementById('pinError').textContent=''; }, 800);
+    }
+  } else if (pinMode === 'change2') {
+    if (!pinFirst) {
+      pinFirst=pinInput; pinInput='';
+      document.getElementById('pinTitle').textContent='Konfirmasi PIN baru';
+      updatePinDots();
+    } else {
+      if (pinInput === pinFirst) {
+        savedPin=pinInput;
+        pinFirst=''; pinInput='';
+        if(typeof fbSavePin==='function') fbSavePin(savedPin);
+        sessionStorage.setItem('ab_unlocked','1');
+        document.getElementById('pinScreen').classList.add('hidden');
+        if(typeof showToast==='function') showToast('✓ PIN berhasil diubah!');
+      } else {
+        document.getElementById('pinError').textContent='PIN tidak cocok, ulangi';
+        updatePinDots(true);
+        setTimeout(function(){ pinInput=''; pinFirst=''; document.getElementById('pinTitle').textContent='Masukkan PIN baru'; updatePinDots(); document.getElementById('pinError').textContent=''; }, 1000);
+      }
+    }
+  }
+}
+function startChangePin() {
+  pinMode='change'; pinInput=''; pinFirst='';
+  document.getElementById('pinTitle').textContent='Masukkan PIN lama';
+  document.getElementById('pinSubtitle').textContent='Verifikasi PIN lama kamu dulu';
+  document.getElementById('pinChangeLink').style.display='none';
+  document.getElementById('pinScreen').classList.remove('hidden');
+  updatePinDots();
+}
+function initPin() {
+  if (sessionStorage.getItem('ab_unlocked') === '1' && savedPin) {
+    document.getElementById('pinScreen').classList.add('hidden');
+    pinUnlocked = true;
+    if(typeof updateHeader==='function') updateHeader();
+    if(typeof renderJual==='function') renderJual();
+    return;
+  }
+  if (!savedPin) {
+    pinMode = 'setup';
+    document.getElementById('pinTitle').textContent = 'Buat PIN baru (4 digit)';
+    document.getElementById('pinSubtitle').textContent = 'Selamat datang! Buat PIN untuk mengamankan aplikasi';
+  } else {
+    pinMode = 'login';
+    document.getElementById('pinTitle').textContent = 'Masukkan PIN';
+    document.getElementById('pinSubtitle').textContent = 'Masukkan PIN untuk melanjutkan';
+    document.getElementById('pinChangeLink').style.display = 'block';
+  }
+  document.getElementById('pinScreen').classList.remove('hidden');
+  pinInput = '';
+  updatePinDots();
+}
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -444,12 +569,7 @@ let stokTab       = 'mobil';
 let prodSearchQ   = '';
 let jualSearchQ   = '';
 
-// ── PIN STATE ─────────────────────────────────────────────────────
-let pinMode      = 'login'; // login | setup | setup2 | change | change2
-let pinInput     = '';
-let pinFirst     = '';
-let savedPin     = '';
-let pinUnlocked  = false;
+// ── PIN STATE - dikelola di script non-module di atas ─────────────
 
 // ── UTILS ─────────────────────────────────────────────────────────
 function todayKey() { return new Date().toISOString().split('T')[0]; }
@@ -503,124 +623,9 @@ async function fbLoad() {
   }
 }
 
-// ── PIN SYSTEM ────────────────────────────────────────────────────
-function initPin() {
-  // Kalau sudah unlock di session ini, skip PIN
-  if (sessionStorage.getItem('ab_unlocked') === '1' && savedPin) {
-    document.getElementById('pinScreen').classList.add('hidden');
-    pinUnlocked = true;
-    updateHeader(); renderJual();
-    return;
-  }
-  if (!savedPin) {
-    pinMode = 'setup';
-    document.getElementById('pinTitle').textContent = 'Buat PIN baru (4 digit)';
-    document.getElementById('pinSubtitle').textContent = 'Selamat datang! Buat PIN untuk mengamankan aplikasi';
-  } else {
-    pinMode = 'login';
-    document.getElementById('pinTitle').textContent = 'Masukkan PIN';
-    document.getElementById('pinSubtitle').textContent = 'Masukkan PIN untuk melanjutkan';
-    document.getElementById('pinChangeLink').style.display = 'block';
-  }
-  document.getElementById('pinScreen').classList.remove('hidden');
-  pinInput = '';
-  updatePinDots();
-}
-
-window.pinKey = function(k) {
-  if (pinInput.length >= 4) return;
-  pinInput += k;
-  updatePinDots();
-  if (pinInput.length === 4) setTimeout(processPinInput, 150);
-}
-window.pinDel = function() {
-  pinInput = pinInput.slice(0,-1);
-  updatePinDots();
-  document.getElementById('pinError').textContent = '';
-}
-
-function updatePinDots(isError=false) {
-  for(let i=0;i<4;i++) {
-    const dot = document.getElementById('dot'+i);
-    dot.className = 'pin-dot';
-    if (isError) dot.classList.add('error');
-    else if (i < pinInput.length) dot.classList.add('filled');
-  }
-}
-
-function processPinInput() {
-  if (pinMode === 'login') {
-    if (pinInput === savedPin) {
-      sessionStorage.setItem('ab_unlocked','1');
-      document.getElementById('pinScreen').classList.add('hidden');
-      pinUnlocked = true;
-      updateHeader(); renderJual();
-    } else {
-      document.getElementById('pinError').textContent = 'PIN salah, coba lagi';
-      updatePinDots(true);
-      setTimeout(()=>{ pinInput=''; updatePinDots(); document.getElementById('pinError').textContent=''; },800);
-    }
-  } else if (pinMode === 'setup') {
-    pinFirst = pinInput; pinInput = '';
-    pinMode = 'setup2';
-    document.getElementById('pinTitle').textContent = 'Konfirmasi PIN';
-    document.getElementById('pinSubtitle').textContent = 'Masukkan PIN yang sama sekali lagi';
-    updatePinDots();
-  } else if (pinMode === 'setup2') {
-    if (pinInput === pinFirst) {
-      savedPin = pinInput;
-      fbSave('config','pin',{pin:savedPin});
-      sessionStorage.setItem('ab_unlocked','1');
-      document.getElementById('pinScreen').classList.add('hidden');
-      pinUnlocked = true;
-      showToast('✓ PIN berhasil dibuat!');
-      updateHeader(); renderJual();
-    } else {
-      document.getElementById('pinError').textContent = 'PIN tidak cocok, ulangi dari awal';
-      updatePinDots(true);
-      setTimeout(()=>{ pinInput=''; pinFirst=''; pinMode='setup'; document.getElementById('pinTitle').textContent='Buat PIN baru (4 digit)'; updatePinDots(); document.getElementById('pinError').textContent=''; },1000);
-    }
-  } else if (pinMode === 'change') {
-    if (pinInput === savedPin) {
-      pinInput=''; pinMode='change2';
-      document.getElementById('pinTitle').textContent='Masukkan PIN baru';
-      document.getElementById('pinSubtitle').textContent='Buat PIN baru kamu';
-      updatePinDots();
-    } else {
-      document.getElementById('pinError').textContent='PIN lama salah';
-      updatePinDots(true);
-      setTimeout(()=>{ pinInput=''; updatePinDots(); document.getElementById('pinError').textContent=''; },800);
-    }
-  } else if (pinMode === 'change2') {
-    if (!pinFirst) {
-      pinFirst=pinInput; pinInput='';
-      document.getElementById('pinTitle').textContent='Konfirmasi PIN baru';
-      updatePinDots();
-    } else {
-      if (pinInput === pinFirst) {
-        savedPin=pinInput;
-        pinFirst=''; pinInput='';
-        fbSave('config','pin',{pin:savedPin});
-        sessionStorage.setItem('ab_unlocked','1');
-        document.getElementById('pinScreen').classList.add('hidden');
-        showToast('✓ PIN berhasil diubah!');
-      } else {
-        document.getElementById('pinError').textContent='PIN tidak cocok, ulangi';
-        updatePinDots(true);
-        setTimeout(()=>{ pinInput=''; pinFirst=''; document.getElementById('pinTitle').textContent='Masukkan PIN baru'; updatePinDots(); document.getElementById('pinError').textContent=''; },1000);
-      }
-    }
-  }
-}
-
-window.startChangePin = function() {
-  pinMode='change'; pinInput=''; pinFirst='';
-  document.getElementById('pinTitle').textContent='Masukkan PIN lama';
-  document.getElementById('pinSubtitle').textContent='Verifikasi PIN lama kamu dulu';
-  document.getElementById('pinChangeLink').style.display='none';
-  document.getElementById('pinScreen').classList.remove('hidden');
-  updatePinDots();
-}
+// ── PIN SYSTEM - fungsi ada di script non-module di atas ─────────
+// fbSavePin dipanggil dari non-module script
+function fbSavePin(pin) { fbSave('config','pin',{pin:pin}); }
 
 // ── HEADER ────────────────────────────────────────────────────────
 function updateHeader() {
@@ -1010,14 +1015,6 @@ window.deleteProd=function(prodId){
 window.saveProducts=async function(){await fbSave('config','products',{list:products});renderJual();showToast('✓ Produk tersimpan!');}
 
 // ── INIT ──────────────────────────────────────────────────────────
-// Event listener PIN keypad - lebih reliable dari onclick di module
-document.getElementById('pinKeypad').addEventListener('click', function(e) {
-  const btn = e.target.closest('[data-pin]');
-  if (btn) { pinKey(btn.dataset.pin); return; }
-});
-document.getElementById('pinDelBtn').addEventListener('click', pinDel);
-document.getElementById('pinChangeLink').addEventListener('click', startChangePin);
-
 document.getElementById('headerDate').textContent=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short'});
 fbLoad();
 </script>
