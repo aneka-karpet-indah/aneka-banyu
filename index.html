@@ -869,18 +869,25 @@ window.toggleAccordion=function(id){
   const el=document.getElementById('acc_'+id);
   el.classList.toggle('open');
 }
+// Gunakan prodId sebagai key, bukan index array
+window.setProdField=function(prodId, field, val) {
+  const p = products.find(p=>p.id===prodId);
+  if (!p) return;
+  if (['hargaBeli','hargaJual','hargaKartonBeli','hargaKartonJual','satuanKarton'].includes(field))
+    p[field] = parseInt(val)||0;
+  else p[field] = val;
+}
+
 function renderManageProd(){
   const q=prodSearchQ.toLowerCase();
   const filtered=products.filter(p=>p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)||(p.kategori||'').toLowerCase().includes(q));
-  // Group by kategori
   const grouped={};
   filtered.forEach(p=>{const k=p.kategori||'Lainnya';if(!grouped[k])grouped[k]=[];grouped[k].push(p);});
   const html=Object.entries(grouped).map(([kat,prods])=>`
     <div class="prod-category">
       <div class="prod-category-title">${kat} (${prods.length})</div>
-      ${prods.map(p=>{
-        const i=products.indexOf(p);
-        return`<div class="prod-accordion-item" id="acc_${p.id}">
+      ${prods.map(p=>`
+        <div class="prod-accordion-item" id="acc_${p.id}">
           <div class="prod-accordion-header" onclick="toggleAccordion('${p.id}')">
             <div class="prod-accordion-icon ${p.iconColor}">${p.icon}</div>
             <div class="prod-accordion-info">
@@ -891,34 +898,44 @@ function renderManageProd(){
           </div>
           <div class="prod-accordion-body">
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Nama Produk</div><input class="prod-field-input" value="${p.name}" onchange="products[${i}].name=this.value;renderManageProd()"></div>
-              <div class="prod-field"><div class="prod-field-label">Kategori</div><input class="prod-field-input" value="${p.kategori||''}" onchange="products[${i}].kategori=this.value"></div>
+              <div class="prod-field"><div class="prod-field-label">Nama Produk</div><input class="prod-field-input" value="${p.name}" onchange="setProdField('${p.id}','name',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Kategori</div><input class="prod-field-input" value="${p.kategori||''}" onchange="setProdField('${p.id}','kategori',this.value)"></div>
             </div>
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Keterangan</div><input class="prod-field-input" value="${p.brand}" onchange="products[${i}].brand=this.value"></div>
-              <div class="prod-field"><div class="prod-field-label">Isi Karton</div><input class="prod-field-input" type="number" value="${p.satuanKarton}" onchange="products[${i}].satuanKarton=parseInt(this.value)||1"></div>
+              <div class="prod-field"><div class="prod-field-label">Keterangan</div><input class="prod-field-input" value="${p.brand}" onchange="setProdField('${p.id}','brand',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Isi Karton</div><input class="prod-field-input" type="number" value="${p.satuanKarton}" onchange="setProdField('${p.id}','satuanKarton',this.value)"></div>
             </div>
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Beli/btl</div><input class="prod-field-input" type="number" value="${p.hargaBeli}" onchange="products[${i}].hargaBeli=parseInt(this.value)||0"></div>
-              <div class="prod-field"><div class="prod-field-label">Jual/btl (default)</div><input class="prod-field-input" type="number" value="${p.hargaJual}" onchange="products[${i}].hargaJual=parseInt(this.value)||0"></div>
+              <div class="prod-field"><div class="prod-field-label">Beli/btl</div><input class="prod-field-input" type="number" value="${p.hargaBeli}" onchange="setProdField('${p.id}','hargaBeli',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Jual/btl (default)</div><input class="prod-field-input" type="number" value="${p.hargaJual}" onchange="setProdField('${p.id}','hargaJual',this.value)"></div>
             </div>
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Beli/karton</div><input class="prod-field-input" type="number" value="${p.hargaKartonBeli}" onchange="products[${i}].hargaKartonBeli=parseInt(this.value)||0"></div>
-              <div class="prod-field"><div class="prod-field-label">Jual/karton (default)</div><input class="prod-field-input" type="number" value="${p.hargaKartonJual}" onchange="products[${i}].hargaKartonJual=parseInt(this.value)||0"></div>
+              <div class="prod-field"><div class="prod-field-label">Beli/karton</div><input class="prod-field-input" type="number" value="${p.hargaKartonBeli}" onchange="setProdField('${p.id}','hargaKartonBeli',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Jual/karton (default)</div><input class="prod-field-input" type="number" value="${p.hargaKartonJual}" onchange="setProdField('${p.id}','hargaKartonJual',this.value)"></div>
             </div>
-            <button class="prod-delete-btn" onclick="deleteProd(${i})">🗑 Hapus Produk Ini</button>
+            <button class="prod-delete-btn" onclick="deleteProd('${p.id}')">🗑 Hapus Produk Ini</button>
           </div>
-        </div>`;
-      }).join('')}
+        </div>`).join('')}
     </div>`).join('');
   document.getElementById('manageProdList').innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">Produk tidak ditemukan</div></div>';
 }
 window.addNewProd=function(){
-  products.push({id:'prod_'+Date.now(),name:'Produk Baru',brand:'',icon:'📦',iconColor:ICON_COLORS[products.length%ICON_COLORS.length],kategori:'Lainnya',hargaBeli:0,hargaJual:0,satuanKarton:12,hargaKartonBeli:0,hargaKartonJual:0});
+  const newProd={id:'prod_'+Date.now(),name:'Produk Baru',brand:'',icon:'📦',iconColor:ICON_COLORS[products.length%ICON_COLORS.length],kategori:'Lainnya',hargaBeli:0,hargaJual:0,satuanKarton:12,hargaKartonBeli:0,hargaKartonJual:0};
+  products.push(newProd);
   renderManageProd();
-  setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),50);
+  setTimeout(()=>{
+    window.scrollTo(0,document.body.scrollHeight);
+    // Auto-open accordion produk baru
+    const el=document.getElementById('acc_'+newProd.id);
+    if(el) el.classList.add('open');
+  },100);
 }
-window.deleteProd=function(i){if(!confirm('Hapus produk '+products[i].name+'?'))return;products.splice(i,1);renderManageProd();}
+window.deleteProd=function(prodId){
+  const p=products.find(p=>p.id===prodId);
+  if(!p||!confirm('Hapus produk '+p.name+'?')) return;
+  products=products.filter(p=>p.id!==prodId);
+  renderManageProd();
+}
 window.saveProducts=async function(){await fbSave('config','products',{list:products});renderJual();showToast('✓ Produk tersimpan!');}
 
 // ── INIT ──────────────────────────────────────────────────────────
