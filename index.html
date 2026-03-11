@@ -414,23 +414,36 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD_ubzJiDta4I4zgjaGTtJ0jhXPZhlrSmA",
+  authDomain: "aneka-banyu.firebaseapp.com",
+  projectId: "aneka-banyu",
+  storageBucket: "aneka-banyu.firebasestorage.app",
+  messagingSenderId: "391678609695",
+  appId: "1:391678609695:web:6f012b497855d3e851482a"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── KONSTANTA & STATE ─────────────────────────────────────────────
 const ICON_COLORS = ['icon-color-1','icon-color-2','icon-color-3','icon-color-4','icon-color-5'];
 const defaultProducts = [
-  { id:1, name:'Air Mineral Kecil', brand:'600ml', icon:'💧', iconColor:'icon-color-1', hargaBeli:2000, hargaJual:3000, satuanKarton:24, hargaKartonBeli:44000, hargaKartonJual:65000 },
-  { id:2, name:'Air Mineral Tanggung', brand:'1500ml', icon:'💧', iconColor:'icon-color-2', hargaBeli:3500, hargaJual:5000, satuanKarton:12, hargaKartonBeli:38000, hargaKartonJual:55000 },
-  { id:3, name:'Air Galon', brand:'19 Liter', icon:'🪣', iconColor:'icon-color-3', hargaBeli:15000, hargaJual:20000, satuanKarton:1, hargaKartonBeli:15000, hargaKartonJual:20000 },
-  { id:4, name:'Minuman Teh/Juice', brand:'Kemasan', icon:'🧃', iconColor:'icon-color-4', hargaBeli:3000, hargaJual:4500, satuanKarton:24, hargaKartonBeli:65000, hargaKartonJual:96000 },
-];
-const defaultTokos = [
-  { id:1, name:'Warung Bu Sari', icon:'🏪', harga:{} },
-  { id:2, name:'Toko Pak Budi', icon:'🛒', harga:{} },
+  { id:'prod_1', name:'Air Mineral Kecil', brand:'600ml', icon:'💧', iconColor:'icon-color-1', hargaBeli:2000, hargaJual:3000, satuanKarton:24, hargaKartonBeli:44000, hargaKartonJual:65000 },
+  { id:'prod_2', name:'Air Mineral Tanggung', brand:'1500ml', icon:'💧', iconColor:'icon-color-2', hargaBeli:3500, hargaJual:5000, satuanKarton:12, hargaKartonBeli:38000, hargaKartonJual:55000 },
+  { id:'prod_3', name:'Air Galon', brand:'19 Liter', icon:'🪣', iconColor:'icon-color-3', hargaBeli:15000, hargaJual:20000, satuanKarton:1, hargaKartonBeli:15000, hargaKartonJual:20000 },
+  { id:'prod_4', name:'Minuman Teh/Juice', brand:'Kemasan', icon:'🧃', iconColor:'icon-color-4', hargaBeli:3000, hargaJual:4500, satuanKarton:24, hargaKartonBeli:65000, hargaKartonJual:96000 },
 ];
 
-let products   = JSON.parse(localStorage.getItem('jk_products') || 'null') || defaultProducts;
-let tokos      = JSON.parse(localStorage.getItem('jk_tokos')    || 'null') || defaultTokos;
-let stokHarian = JSON.parse(localStorage.getItem('jk_stok')     || '{}');
-let transaksi  = JSON.parse(localStorage.getItem('jk_trx')      || '{}');
+let products   = [];
+let tokos      = [];
+let stokHarian = {};
+let transaksi  = {};
 
 let selectedToko  = null;
 let selectedProd  = null;
@@ -439,66 +452,112 @@ let currentSatuan = 'satuan';
 let hargaManual   = false;
 let rekapDate     = todayKey();
 let rekapTab      = 'trx';
+let dbReady       = false;
 
+// ── UTILS ─────────────────────────────────────────────────────────
 function todayKey() { return new Date().toISOString().split('T')[0]; }
-function formatDate(k) { const d = new Date(k+'T00:00:00'); return d.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }
+function formatDate(k) { const d=new Date(k+'T00:00:00'); return d.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }
 function formatRp(n) { if(n>=1000000) return 'Rp '+(n/1000000).toFixed(1)+'jt'; if(n>=1000) return 'Rp '+(n/1000).toFixed(0)+'rb'; return 'Rp '+n; }
 function formatRpFull(n) { return 'Rp '+n.toLocaleString('id-ID'); }
-function saveAll() {
-  localStorage.setItem('jk_products', JSON.stringify(products));
-  localStorage.setItem('jk_tokos',    JSON.stringify(tokos));
-  localStorage.setItem('jk_stok',     JSON.stringify(stokHarian));
-  localStorage.setItem('jk_trx',      JSON.stringify(transaksi));
-}
 function getDateTrx(k) { return transaksi[k] || []; }
 function calcStats(k) {
-  let pem=0, mod=0;
-  getDateTrx(k).forEach(t => { pem += t.total; mod += t.totalBeli; });
-  return { pemasukan:pem, modal:mod, untung:pem-mod };
+  let pem=0,mod=0;
+  getDateTrx(k).forEach(t=>{pem+=t.total;mod+=t.totalBeli;});
+  return {pemasukan:pem,modal:mod,untung:pem-mod};
 }
-function getHargaToko(tokoId, prodId, satuan) {
-  const t = tokos.find(t => t.id===tokoId);
-  if (!t) return null;
-  return t.harga[prodId+'_'+satuan] || null;
+function getHargaToko(tokoId,prodId,satuan) {
+  const t=tokos.find(t=>t.id===tokoId);
+  if(!t) return null;
+  return t.harga[prodId+'_'+satuan]||null;
+}
+function showLoading(msg='Menyimpan...') {
+  document.getElementById('toast').textContent = '⏳ '+msg;
+  document.getElementById('toast').classList.add('show');
+}
+function hideLoading() { document.getElementById('toast').classList.remove('show'); }
+
+// ── FIREBASE SAVE/LOAD ────────────────────────────────────────────
+async function fbSaveProducts() {
+  await setDoc(doc(db,'config','products'), { list: products });
+}
+async function fbSaveTokos() {
+  await setDoc(doc(db,'config','tokos'), { list: tokos });
+}
+async function fbSaveStok() {
+  await setDoc(doc(db,'config','stok'), stokHarian);
+}
+async function fbSaveTrx(dateKey) {
+  await setDoc(doc(db,'transaksi', dateKey), { list: transaksi[dateKey]||[] });
 }
 
+async function fbLoad() {
+  showLoading('Memuat data...');
+  try {
+    // Products
+    const prodDoc = await getDoc(doc(db,'config','products'));
+    products = prodDoc.exists() ? prodDoc.data().list : [...defaultProducts];
+    if (!prodDoc.exists()) await fbSaveProducts();
+
+    // Tokos
+    const tokoDoc = await getDoc(doc(db,'config','tokos'));
+    tokos = tokoDoc.exists() ? tokoDoc.data().list : [];
+
+    // Stok
+    const stokDoc = await getDoc(doc(db,'config','stok'));
+    stokHarian = stokDoc.exists() ? stokDoc.data() : {};
+
+    // Transaksi (load 30 hari terakhir)
+    const trxSnap = await getDocs(collection(db,'transaksi'));
+    transaksi = {};
+    trxSnap.forEach(d => { transaksi[d.id] = d.data().list || []; });
+
+    dbReady = true;
+    hideLoading();
+    updateHeader();
+    renderJual();
+    rekapDate = todayKey();
+  } catch(e) {
+    console.error(e);
+    showToast('⚠️ Gagal koneksi, cek internet');
+  }
+}
+
+// ── HEADER ────────────────────────────────────────────────────────
 function updateHeader() {
-  const d = new Date();
+  const d=new Date();
   document.getElementById('headerDate').textContent = d.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
-  const s = calcStats(todayKey());
+  const s=calcStats(todayKey());
   document.getElementById('statPemasukan').textContent = formatRp(s.pemasukan);
   document.getElementById('statModal').textContent     = formatRp(s.modal);
   document.getElementById('statUntung').textContent    = formatRp(s.untung);
 }
 
-function showPage(name, btn) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+// ── PAGE NAV ──────────────────────────────────────────────────────
+window.showPage = function(name, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   btn.classList.add('active');
-  if (name==='jual')   renderJual();
-  if (name==='stok')   renderStok();
-  if (name==='rekap')  renderRekap();
-  if (name==='toko')   renderTokoManage();
-  if (name==='produk') renderManageProd();
+  if(name==='jual')   renderJual();
+  if(name==='stok')   renderStok();
+  if(name==='rekap')  renderRekap();
+  if(name==='toko')   renderTokoManage();
+  if(name==='produk') renderManageProd();
 }
 
 // ── JUAL ──────────────────────────────────────────────────────────
 function renderJual() {
-  const tokoEl = document.getElementById('tokoSelName');
-  if (selectedToko) { tokoEl.textContent = selectedToko.icon+' '+selectedToko.name; tokoEl.classList.remove('placeholder'); }
-  else { tokoEl.textContent = 'Pilih toko atau lanjut tanpa toko...'; tokoEl.classList.add('placeholder'); }
-  const today = todayKey();
-  const stok = stokHarian[today] || {};
-  document.getElementById('productGrid').innerHTML = products.map(p => {
-    const s = stok[p.id];
-    const terjual = getDateTrx(today).filter(t=>t.prodId===p.id)
-      .reduce((sum,t) => sum+(t.satuan==='satuan'?t.qty:t.qty*p.satuanKarton), 0);
-    const sisa = s ? s.awal-terjual : null;
-    const low = sisa!==null && sisa<5;
-    const hjSat = (selectedToko && getHargaToko(selectedToko.id,p.id,'satuan')) || p.hargaJual;
-    const hjKrt = (selectedToko && getHargaToko(selectedToko.id,p.id,'karton')) || p.hargaKartonJual;
-    return `<div class="product-card" onclick="openTrxModal(${p.id})">
+  const tokoEl=document.getElementById('tokoSelName');
+  if(selectedToko){tokoEl.textContent=selectedToko.icon+' '+selectedToko.name;tokoEl.classList.remove('placeholder');}
+  else{tokoEl.textContent='Pilih toko atau lanjut tanpa toko...';tokoEl.classList.add('placeholder');}
+  const today=todayKey(), stok=stokHarian[today]||{};
+  document.getElementById('productGrid').innerHTML = products.map(p=>{
+    const s=stok[p.id];
+    const terjual=getDateTrx(today).filter(t=>t.prodId===p.id).reduce((sum,t)=>sum+(t.satuan==='satuan'?t.qty:t.qty*p.satuanKarton),0);
+    const sisa=s?s.awal-terjual:null, low=sisa!==null&&sisa<5;
+    const hjSat=(selectedToko&&getHargaToko(selectedToko.id,p.id,'satuan'))||p.hargaJual;
+    const hjKrt=(selectedToko&&getHargaToko(selectedToko.id,p.id,'karton'))||p.hargaKartonJual;
+    return `<div class="product-card" onclick="openTrxModal('${p.id}')">
       <div class="prod-icon ${p.iconColor}">${p.icon}</div>
       <div class="prod-info">
         <div class="prod-name">${p.name}</div>
@@ -511,36 +570,32 @@ function renderJual() {
 }
 
 // ── TOKO PICKER ───────────────────────────────────────────────────
-function openTokoPicker() {
-  document.getElementById('tokoSearchInput').value = '';
+window.openTokoPicker = function() {
+  document.getElementById('tokoSearchInput').value='';
   renderTokoPickList('');
   document.getElementById('modalTokoPicker').classList.add('open');
 }
-function closeTokoPickerOutside(e) { if(e.target.id==='modalTokoPicker') document.getElementById('modalTokoPicker').classList.remove('open'); }
+window.closeTokoPickerOutside = function(e) { if(e.target.id==='modalTokoPicker') document.getElementById('modalTokoPicker').classList.remove('open'); }
 function renderTokoPickList(q) {
-  const filtered = tokos.filter(t => t.name.toLowerCase().includes(q.toLowerCase()));
+  const filtered=tokos.filter(t=>t.name.toLowerCase().includes(q.toLowerCase()));
   document.getElementById('tokoPickList').innerHTML =
     `<div class="toko-pick-item ${!selectedToko?'selected':''}" onclick="selectToko(null)">
       <div class="toko-pick-icon">🏠</div>
       <div class="toko-pick-info"><div class="toko-pick-name">Umum / Tanpa Toko</div><div class="toko-pick-meta">Gunakan harga default produk</div></div>
-    </div>` +
-    filtered.map(t => `<div class="toko-pick-item ${selectedToko&&selectedToko.id===t.id?'selected':''}" onclick="selectToko(${t.id})">
+    </div>`+
+    filtered.map(t=>`<div class="toko-pick-item ${selectedToko&&selectedToko.id===t.id?'selected':''}" onclick="selectToko('${t.id}')">
       <div class="toko-pick-icon">${t.icon}</div>
-      <div class="toko-pick-info"><div class="toko-pick-name">${t.name}</div><div class="toko-pick-meta">${getTokoPreview(t)}</div></div>
-    </div>`).join('') +
+      <div class="toko-pick-info"><div class="toko-pick-name">${t.name}</div><div class="toko-pick-meta">${Object.keys(t.harga||{}).length} harga khusus</div></div>
+    </div>`).join('')+
     `<div class="toko-pick-manual" onclick="goAddToko()"><div class="toko-pick-icon">➕</div><span>Tambah toko baru</span></div>`;
 }
-function getTokoPreview(t) {
-  const c = Object.keys(t.harga||{}).length;
-  return c>0 ? c+' harga khusus' : 'Belum ada harga khusus';
-}
-function filterTokoList(q) { renderTokoPickList(q); }
-function selectToko(id) {
-  selectedToko = id ? tokos.find(t=>t.id===id) : null;
+window.filterTokoList = function(q){renderTokoPickList(q);}
+window.selectToko = function(id) {
+  selectedToko=id?tokos.find(t=>t.id===id):null;
   document.getElementById('modalTokoPicker').classList.remove('open');
   renderJual();
 }
-function goAddToko() {
+window.goAddToko = function() {
   document.getElementById('modalTokoPicker').classList.remove('open');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.nav-btn')[3].classList.add('active');
@@ -550,90 +605,72 @@ function goAddToko() {
 }
 
 // ── TRX MODAL ─────────────────────────────────────────────────────
-function openTrxModal(prodId) {
-  selectedProd  = products.find(p=>p.id===prodId);
-  currentQty    = 1;
-  currentSatuan = 'satuan';
-  hargaManual   = false;
-  document.getElementById('modalProdName').textContent = selectedProd.name;
-  document.getElementById('modalProdSub').textContent  = selectedProd.brand;
-  document.getElementById('modalTokoChip').innerHTML = selectedToko
-    ? `<div class="toko-chip" onclick="switchTokoFromTrx()"><span class="toko-chip-name">${selectedToko.icon} ${selectedToko.name}</span><span class="toko-chip-change">ganti ▾</span></div>`
-    : `<div class="toko-chip" onclick="switchTokoFromTrx()"><span class="toko-chip-name">🏠 Umum</span><span class="toko-chip-change">pilih toko ▾</span></div>`;
-  renderSatuanTabs();
-  updateHargaInput();
+window.openTrxModal = function(prodId) {
+  selectedProd=products.find(p=>p.id===prodId);
+  currentQty=1; currentSatuan='satuan'; hargaManual=false;
+  document.getElementById('modalProdName').textContent=selectedProd.name;
+  document.getElementById('modalProdSub').textContent=selectedProd.brand;
+  document.getElementById('modalTokoChip').innerHTML=selectedToko
+    ?`<div class="toko-chip" onclick="switchTokoFromTrx()"><span class="toko-chip-name">${selectedToko.icon} ${selectedToko.name}</span><span class="toko-chip-change">ganti ▾</span></div>`
+    :`<div class="toko-chip" onclick="switchTokoFromTrx()"><span class="toko-chip-name">🏠 Umum</span><span class="toko-chip-change">pilih toko ▾</span></div>`;
+  renderSatuanTabs(); updateHargaInput();
   document.getElementById('modalTrx').classList.add('open');
 }
-function switchTokoFromTrx() {
-  document.getElementById('modalTrx').classList.remove('open');
-  setTimeout(openTokoPicker, 150);
-}
-function closeTrxModal(e) { if(e.target.id==='modalTrx') document.getElementById('modalTrx').classList.remove('open'); }
+window.switchTokoFromTrx=function(){document.getElementById('modalTrx').classList.remove('open');setTimeout(openTokoPicker,150);}
+window.closeTrxModal=function(e){if(e.target.id==='modalTrx')document.getElementById('modalTrx').classList.remove('open');}
 
-function getEffectiveHarga() {
-  if (selectedToko) { const h = getHargaToko(selectedToko.id,selectedProd.id,'satuan'); if(h) return h; }
-  return selectedProd.hargaJual;
-}
-function getEffectiveHargaKarton() {
-  if (selectedToko) { const h = getHargaToko(selectedToko.id,selectedProd.id,'karton'); if(h) return h; }
-  return selectedProd.hargaKartonJual;
-}
-function getBaseHarga() { return currentSatuan==='satuan' ? getEffectiveHarga() : getEffectiveHargaKarton(); }
+function getEffectiveHarga(){if(selectedToko){const h=getHargaToko(selectedToko.id,selectedProd.id,'satuan');if(h)return h;}return selectedProd.hargaJual;}
+function getEffectiveHargaKarton(){if(selectedToko){const h=getHargaToko(selectedToko.id,selectedProd.id,'karton');if(h)return h;}return selectedProd.hargaKartonJual;}
 
-function renderSatuanTabs() {
-  document.getElementById('satuanTabs').innerHTML =
-    `<button class="satuan-tab ${currentSatuan==='satuan'?'active':''}" onclick="setSatuan('satuan')">Satuan<br><small>${formatRp(getEffectiveHarga())}/btl</small></button>` +
-    (selectedProd.satuanKarton>1 ? `<button class="satuan-tab ${currentSatuan==='karton'?'active':''}" onclick="setSatuan('karton')">Karton (${selectedProd.satuanKarton} btl)<br><small>${formatRp(getEffectiveHargaKarton())}/krt</small></button>` : '');
+function renderSatuanTabs(){
+  document.getElementById('satuanTabs').innerHTML=
+    `<button class="satuan-tab ${currentSatuan==='satuan'?'active':''}" onclick="setSatuan('satuan')">Satuan<br><small>${formatRp(getEffectiveHarga())}/btl</small></button>`+
+    (selectedProd.satuanKarton>1?`<button class="satuan-tab ${currentSatuan==='karton'?'active':''}" onclick="setSatuan('karton')">Karton (${selectedProd.satuanKarton} btl)<br><small>${formatRp(getEffectiveHargaKarton())}/krt</small></button>`:'');
 }
-function updateHargaInput() {
-  if (!hargaManual) document.getElementById('hargaJualInput').value = getBaseHarga();
+function updateHargaInput(){
+  if(!hargaManual) document.getElementById('hargaJualInput').value=currentSatuan==='satuan'?getEffectiveHarga():getEffectiveHargaKarton();
   updateTotal();
-  const src = document.getElementById('hargaSource');
-  if (hargaManual) { src.textContent='manual'; src.className='harga-source manual'; }
-  else if (selectedToko && getHargaToko(selectedToko.id,selectedProd.id,currentSatuan)) { src.textContent='toko'; src.className='harga-source toko'; }
-  else { src.textContent='default'; src.className='harga-source default'; }
+  const src=document.getElementById('hargaSource');
+  if(hargaManual){src.textContent='manual';src.className='harga-source manual';}
+  else if(selectedToko&&getHargaToko(selectedToko.id,selectedProd.id,currentSatuan)){src.textContent='toko';src.className='harga-source toko';}
+  else{src.textContent='default';src.className='harga-source default';}
 }
-function onHargaManualChange() {
-  hargaManual = true;
-  document.getElementById('hargaSource').textContent = 'manual';
-  document.getElementById('hargaSource').className = 'harga-source manual';
-  updateTotal();
+window.onHargaManualChange=function(){hargaManual=true;document.getElementById('hargaSource').textContent='manual';document.getElementById('hargaSource').className='harga-source manual';updateTotal();}
+function updateTotal(){
+  const h=parseInt(document.getElementById('hargaJualInput').value)||0;
+  document.getElementById('qtyDisplay').textContent=currentQty;
+  document.getElementById('modalTotal').textContent=formatRpFull(h*currentQty);
 }
-function updateTotal() {
-  const h = parseInt(document.getElementById('hargaJualInput').value)||0;
-  document.getElementById('qtyDisplay').textContent = currentQty;
-  document.getElementById('modalTotal').textContent = formatRpFull(h*currentQty);
-}
-function setSatuan(s) { currentSatuan=s; currentQty=1; hargaManual=false; renderSatuanTabs(); updateHargaInput(); }
-function changeQty(d) { currentQty=Math.max(1,currentQty+d); updateTotal(); }
+window.setSatuan=function(s){currentSatuan=s;currentQty=1;hargaManual=false;renderSatuanTabs();updateHargaInput();}
+window.changeQty=function(d){currentQty=Math.max(1,currentQty+d);updateTotal();}
 
-function confirmTrx() {
-  const today = todayKey();
-  if (!transaksi[today]) transaksi[today] = [];
-  const hargaJual = parseInt(document.getElementById('hargaJualInput').value)||0;
-  const hargaBeli = currentSatuan==='satuan' ? selectedProd.hargaBeli : selectedProd.hargaKartonBeli;
-  transaksi[today].push({
+window.confirmTrx = async function() {
+  const today=todayKey();
+  if(!transaksi[today]) transaksi[today]=[];
+  const hargaJual=parseInt(document.getElementById('hargaJualInput').value)||0;
+  const hargaBeli=currentSatuan==='satuan'?selectedProd.hargaBeli:selectedProd.hargaKartonBeli;
+  const trx = {
     id: Date.now(),
-    prodId: selectedProd.id, prodName: selectedProd.name, icon: selectedProd.icon,
-    tokoId: selectedToko ? selectedToko.id : null,
-    tokoName: selectedToko ? selectedToko.name : 'Umum',
-    qty: currentQty, satuan: currentSatuan,
-    satuanLabel: currentSatuan==='satuan'?'btl':'krt',
-    hargaJual, total: hargaJual*currentQty, totalBeli: hargaBeli*currentQty,
-    time: new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})
-  });
-  saveAll();
+    prodId:selectedProd.id, prodName:selectedProd.name, icon:selectedProd.icon,
+    tokoId:selectedToko?selectedToko.id:null,
+    tokoName:selectedToko?selectedToko.name:'Umum',
+    qty:currentQty, satuan:currentSatuan,
+    satuanLabel:currentSatuan==='satuan'?'btl':'krt',
+    hargaJual, total:hargaJual*currentQty, totalBeli:hargaBeli*currentQty,
+    time:new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})
+  };
+  transaksi[today].push(trx);
   document.getElementById('modalTrx').classList.remove('open');
   updateHeader(); renderJual();
   showToast(`✓ ${currentQty} ${currentSatuan==='karton'?'krt':'btl'} ${selectedProd.name} → ${selectedToko?selectedToko.name:'Umum'}`);
+  await fbSaveTrx(today);
 }
 
 // ── STOK ──────────────────────────────────────────────────────────
-function renderStok() {
-  const today = todayKey();
-  const stok = stokHarian[today]||{};
-  document.getElementById('stokList').innerHTML = products.map(p => {
-    const s = stok[p.id]||{awal:''};
+function renderStok(){
+  const today=todayKey(), stok=stokHarian[today]||{};
+  document.getElementById('stokList').innerHTML=products.map(p=>{
+    const s=stok[p.id]||{awal:''};
     return `<div class="stok-card">
       <div class="stok-card-header">
         <div class="prod-icon ${p.iconColor}" style="width:42px;height:42px;border-radius:12px;font-size:20px">${p.icon}</div>
@@ -644,41 +681,41 @@ function renderStok() {
     </div>`;
   }).join('');
 }
-function saveStok() {
-  const today = todayKey();
-  if (!stokHarian[today]) stokHarian[today]={};
-  products.forEach(p => { stokHarian[today][p.id]={ awal: parseInt(document.getElementById('stok_'+p.id).value)||0 }; });
-  saveAll(); renderJual(); showToast('✓ Stok tersimpan!');
+window.saveStok = async function(){
+  const today=todayKey();
+  if(!stokHarian[today]) stokHarian[today]={};
+  products.forEach(p=>{stokHarian[today][p.id]={awal:parseInt(document.getElementById('stok_'+p.id).value)||0};});
+  renderJual();
+  showToast('✓ Stok tersimpan!');
+  await fbSaveStok();
 }
 
 // ── REKAP ─────────────────────────────────────────────────────────
-function changeRekapDate(d) {
-  const date = new Date(rekapDate+'T00:00:00'); date.setDate(date.getDate()+d);
-  const nk = date.toISOString().split('T')[0];
-  if (nk>todayKey()) return;
+window.changeRekapDate=function(d){
+  const date=new Date(rekapDate+'T00:00:00');date.setDate(date.getDate()+d);
+  const nk=date.toISOString().split('T')[0];
+  if(nk>todayKey()) return;
   rekapDate=nk; renderRekap();
 }
-function setRekapTab(tab, btn) {
+window.setRekapTab=function(tab,btn){
   rekapTab=tab;
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderRekapContent();
+  btn.classList.add('active'); renderRekapContent();
 }
-function renderRekap() {
-  document.getElementById('rekapDateDisplay').textContent = formatDate(rekapDate);
-  const s = calcStats(rekapDate);
-  document.getElementById('rekapSummary').innerHTML = `
+function renderRekap(){
+  document.getElementById('rekapDateDisplay').textContent=formatDate(rekapDate);
+  const s=calcStats(rekapDate);
+  document.getElementById('rekapSummary').innerHTML=`
     <div class="rekap-card"><div class="rekap-card-label">Pemasukan</div><div class="rekap-card-val green">${formatRpFull(s.pemasukan)}</div></div>
     <div class="rekap-card"><div class="rekap-card-label">Modal</div><div class="rekap-card-val orange">${formatRpFull(s.modal)}</div></div>
     <div class="rekap-card full"><div class="rekap-card-label">Keuntungan Bersih</div><div class="rekap-card-val ${s.untung>=0?'yellow':'red'}">${formatRpFull(s.untung)}</div></div>`;
   renderRekapContent();
 }
-function renderRekapContent() {
-  const trxs = getDateTrx(rekapDate);
-  const el = document.getElementById('rekapContent');
-  if (rekapTab==='trx') {
-    if (!trxs.length) { el.innerHTML=emptyState(); return; }
-    el.innerHTML = '<div class="trx-list">'+[...trxs].reverse().map(t=>`
+function renderRekapContent(){
+  const trxs=getDateTrx(rekapDate), el=document.getElementById('rekapContent');
+  if(rekapTab==='trx'){
+    if(!trxs.length){el.innerHTML=emptyState();return;}
+    el.innerHTML='<div class="trx-list">'+[...trxs].reverse().map(t=>`
       <div class="trx-item">
         <div class="trx-icon">${t.icon}</div>
         <div class="trx-info">
@@ -690,10 +727,10 @@ function renderRekapContent() {
         <button class="trx-delete" onclick="deleteTrx('${rekapDate}',${t.id})">✕</button>
       </div>`).join('')+'</div>';
   } else {
-    const byToko = {};
-    trxs.forEach(t => { if(!byToko[t.tokoName]) byToko[t.tokoName]={total:0,trxs:[]}; byToko[t.tokoName].total+=t.total; byToko[t.tokoName].trxs.push(t); });
-    if (!Object.keys(byToko).length) { el.innerHTML=emptyState(); return; }
-    el.innerHTML = Object.entries(byToko).sort((a,b)=>b[1].total-a[1].total).map(([name,data])=>`
+    const byToko={};
+    trxs.forEach(t=>{if(!byToko[t.tokoName])byToko[t.tokoName]={total:0,trxs:[]};byToko[t.tokoName].total+=t.total;byToko[t.tokoName].trxs.push(t);});
+    if(!Object.keys(byToko).length){el.innerHTML=emptyState();return;}
+    el.innerHTML=Object.entries(byToko).sort((a,b)=>b[1].total-a[1].total).map(([name,data])=>`
       <div class="rekap-card" style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="font-weight:800;font-size:15px">🏪 ${name}</div>
@@ -703,16 +740,17 @@ function renderRekapContent() {
       </div>`).join('');
   }
 }
-function emptyState() { return `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Belum ada transaksi</div><div class="empty-state-sub">Tanggal ini kosong</div></div>`; }
-function deleteTrx(dk, id) {
-  if (!confirm('Hapus transaksi ini?')) return;
+function emptyState(){return`<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Belum ada transaksi</div><div class="empty-state-sub">Tanggal ini kosong</div></div>`;}
+window.deleteTrx = async function(dk,id){
+  if(!confirm('Hapus transaksi ini?')) return;
   transaksi[dk]=transaksi[dk].filter(t=>t.id!==id);
-  saveAll(); updateHeader(); renderRekap(); renderJual();
+  updateHeader(); renderRekap(); renderJual();
+  await fbSaveTrx(dk);
 }
 
 // ── TOKO MANAGE ───────────────────────────────────────────────────
-function renderTokoManage() {
-  document.getElementById('tokoList').innerHTML = tokos.map((t,i)=>`
+function renderTokoManage(){
+  document.getElementById('tokoList').innerHTML=tokos.map((t,i)=>`
     <div class="toko-card">
       <div class="toko-card-header">
         <div class="toko-card-icon">${t.icon}</div>
@@ -722,8 +760,8 @@ function renderTokoManage() {
       <div class="toko-harga-section-label">Harga Khusus (kosongkan = pakai harga default)</div>
       <div class="toko-harga-grid">
         ${products.map(p=>{
-          const kS=p.id+'_satuan', kK=p.id+'_karton';
-          return `<div class="toko-prod-harga-block">
+          const kS=p.id+'_satuan',kK=p.id+'_karton';
+          return`<div class="toko-prod-harga-block">
             <div class="toko-prod-label">${p.icon} ${p.name}</div>
             <div class="toko-harga-row">
               <div class="toko-harga-col">
@@ -740,26 +778,26 @@ function renderTokoManage() {
       </div>
     </div>`).join('');
 }
-function setTokoHarga(ti, key, val) {
-  const v = parseInt(val);
-  if (v>0) tokos[ti].harga[key]=v; else delete tokos[ti].harga[key];
-}
-function addNewToko() {
-  const icons = ['🏪','🛒','🏬','🏠','⛺','🌾','🏗️'];
-  tokos.push({ id:Date.now(), name:'Toko Baru', icon:icons[tokos.length%icons.length], harga:{} });
+window.setTokoHarga=function(ti,key,val){const v=parseInt(val);if(v>0)tokos[ti].harga[key]=v;else delete tokos[ti].harga[key];}
+window.addNewToko=function(){
+  const icons=['🏪','🛒','🏬','🏠','⛺','🌾','🏗️'];
+  tokos.push({id:'toko_'+Date.now(),name:'Toko Baru',icon:icons[tokos.length%icons.length],harga:{}});
   renderTokoManage();
   setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),50);
 }
-function deleteToko(i) {
-  if (!confirm('Hapus toko '+tokos[i].name+'?')) return;
-  if (selectedToko&&selectedToko.id===tokos[i].id) selectedToko=null;
+window.deleteToko=function(i){
+  if(!confirm('Hapus toko '+tokos[i].name+'?')) return;
+  if(selectedToko&&selectedToko.id===tokos[i].id) selectedToko=null;
   tokos.splice(i,1); renderTokoManage();
 }
-function saveTokos() { saveAll(); renderJual(); showToast('✓ Data toko tersimpan!'); }
+window.saveTokos=async function(){
+  await fbSaveTokos();
+  renderJual(); showToast('✓ Data toko tersimpan!');
+}
 
 // ── PRODUK MANAGE ─────────────────────────────────────────────────
-function renderManageProd() {
-  document.getElementById('manageProdList').innerHTML = products.map((p,i)=>`
+function renderManageProd(){
+  document.getElementById('manageProdList').innerHTML=products.map((p,i)=>`
     <div class="manage-prod-card">
       <div class="manage-prod-header">
         <div class="prod-icon ${p.iconColor}" style="width:40px;height:40px;border-radius:11px;font-size:20px">${p.icon}</div>
@@ -780,20 +818,26 @@ function renderManageProd() {
       </div>
     </div>`).join('');
 }
-function addNewProd() {
-  products.push({ id:Date.now(), name:'Produk Baru', brand:'', icon:'📦', iconColor:ICON_COLORS[products.length%ICON_COLORS.length], hargaBeli:0, hargaJual:0, satuanKarton:12, hargaKartonBeli:0, hargaKartonJual:0 });
+window.addNewProd=function(){
+  products.push({id:'prod_'+Date.now(),name:'Produk Baru',brand:'',icon:'📦',iconColor:ICON_COLORS[products.length%ICON_COLORS.length],hargaBeli:0,hargaJual:0,satuanKarton:12,hargaKartonBeli:0,hargaKartonJual:0});
   renderManageProd();
   setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),50);
 }
-function deleteProd(i) { if(!confirm('Hapus produk '+products[i].name+'?')) return; products.splice(i,1); renderManageProd(); }
-function saveProducts() { saveAll(); renderJual(); showToast('✓ Produk tersimpan!'); }
+window.deleteProd=function(i){if(!confirm('Hapus produk '+products[i].name+'?'))return;products.splice(i,1);renderManageProd();}
+window.saveProducts=async function(){
+  await fbSaveProducts();
+  renderJual(); showToast('✓ Produk tersimpan!');
+}
 
-function showToast(msg) {
-  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+// ── TOAST ─────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-updateHeader(); renderJual(); rekapDate=todayKey();
+// ── INIT ──────────────────────────────────────────────────────────
+document.getElementById('headerDate').textContent = new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+fbLoad();
 </script>
 </body>
 </html>
