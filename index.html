@@ -255,21 +255,21 @@
     <div class="pin-dot" id="dot3"></div>
   </div>
   <div class="pin-error-msg" id="pinError"></div>
-  <div class="pin-keypad">
-    <button class="pin-key" onclick="pinKey('1')">1</button>
-    <button class="pin-key" onclick="pinKey('2')">2</button>
-    <button class="pin-key" onclick="pinKey('3')">3</button>
-    <button class="pin-key" onclick="pinKey('4')">4</button>
-    <button class="pin-key" onclick="pinKey('5')">5</button>
-    <button class="pin-key" onclick="pinKey('6')">6</button>
-    <button class="pin-key" onclick="pinKey('7')">7</button>
-    <button class="pin-key" onclick="pinKey('8')">8</button>
-    <button class="pin-key" onclick="pinKey('9')">9</button>
-    <button class="pin-key empty"></button>
-    <button class="pin-key" onclick="pinKey('0')">0</button>
-    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  <div class="pin-keypad" id="pinKeypad">
+    <button class="pin-key" data-pin="1">1</button>
+    <button class="pin-key" data-pin="2">2</button>
+    <button class="pin-key" data-pin="3">3</button>
+    <button class="pin-key" data-pin="4">4</button>
+    <button class="pin-key" data-pin="5">5</button>
+    <button class="pin-key" data-pin="6">6</button>
+    <button class="pin-key" data-pin="7">7</button>
+    <button class="pin-key" data-pin="8">8</button>
+    <button class="pin-key" data-pin="9">9</button>
+    <button class="pin-key empty" disabled></button>
+    <button class="pin-key" data-pin="0">0</button>
+    <button class="pin-key del" id="pinDelBtn">⌫</button>
   </div>
-  <div class="pin-change-link" id="pinChangeLink" style="display:none" onclick="startChangePin()">Ganti PIN</div>
+  <div class="pin-change-link" id="pinChangeLink" style="display:none">Ganti PIN</div>
 </div>
 
 <!-- MAIN APP -->
@@ -1010,6 +1010,14 @@ window.deleteProd=function(prodId){
 window.saveProducts=async function(){await fbSave('config','products',{list:products});renderJual();showToast('✓ Produk tersimpan!');}
 
 // ── INIT ──────────────────────────────────────────────────────────
+// Event listener PIN keypad - lebih reliable dari onclick di module
+document.getElementById('pinKeypad').addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-pin]');
+  if (btn) { pinKey(btn.dataset.pin); return; }
+});
+document.getElementById('pinDelBtn').addEventListener('click', pinDel);
+document.getElementById('pinChangeLink').addEventListener('click', startChangePin);
+
 document.getElementById('headerDate').textContent=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short'});
 fbLoad();
 </script>
