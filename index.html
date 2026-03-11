@@ -500,6 +500,13 @@ async function fbLoad() {
 
 // ── PIN SYSTEM ────────────────────────────────────────────────────
 function initPin() {
+  // Kalau sudah unlock di session ini, skip PIN
+  if (sessionStorage.getItem('ab_unlocked') === '1' && savedPin) {
+    document.getElementById('pinScreen').classList.add('hidden');
+    pinUnlocked = true;
+    updateHeader(); renderJual();
+    return;
+  }
   if (!savedPin) {
     pinMode = 'setup';
     document.getElementById('pinTitle').textContent = 'Buat PIN baru (4 digit)';
@@ -539,6 +546,7 @@ function updatePinDots(isError=false) {
 function processPinInput() {
   if (pinMode === 'login') {
     if (pinInput === savedPin) {
+      sessionStorage.setItem('ab_unlocked','1');
       document.getElementById('pinScreen').classList.add('hidden');
       pinUnlocked = true;
       updateHeader(); renderJual();
@@ -557,6 +565,7 @@ function processPinInput() {
     if (pinInput === pinFirst) {
       savedPin = pinInput;
       fbSave('config','pin',{pin:savedPin});
+      sessionStorage.setItem('ab_unlocked','1');
       document.getElementById('pinScreen').classList.add('hidden');
       pinUnlocked = true;
       showToast('✓ PIN berhasil dibuat!');
@@ -898,20 +907,20 @@ function renderManageProd(){
           </div>
           <div class="prod-accordion-body">
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Nama Produk</div><input class="prod-field-input" value="${p.name}" onchange="setProdField('${p.id}','name',this.value)"></div>
-              <div class="prod-field"><div class="prod-field-label">Kategori</div><input class="prod-field-input" value="${p.kategori||''}" onchange="setProdField('${p.id}','kategori',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Nama Produk</div><input class="prod-field-input" value="${p.name}" oninput="setProdField('${p.id}','name',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Kategori</div><input class="prod-field-input" value="${p.kategori||''}" oninput="setProdField('${p.id}','kategori',this.value)"></div>
             </div>
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Keterangan</div><input class="prod-field-input" value="${p.brand}" onchange="setProdField('${p.id}','brand',this.value)"></div>
-              <div class="prod-field"><div class="prod-field-label">Isi Karton</div><input class="prod-field-input" type="number" value="${p.satuanKarton}" onchange="setProdField('${p.id}','satuanKarton',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Keterangan</div><input class="prod-field-input" value="${p.brand}" oninput="setProdField('${p.id}','brand',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Isi Karton</div><input class="prod-field-input" type="number" value="${p.satuanKarton}" oninput="setProdField('${p.id}','satuanKarton',this.value)"></div>
             </div>
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Beli/btl</div><input class="prod-field-input" type="number" value="${p.hargaBeli}" onchange="setProdField('${p.id}','hargaBeli',this.value)"></div>
-              <div class="prod-field"><div class="prod-field-label">Jual/btl (default)</div><input class="prod-field-input" type="number" value="${p.hargaJual}" onchange="setProdField('${p.id}','hargaJual',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Beli/btl</div><input class="prod-field-input" type="number" value="${p.hargaBeli}" oninput="setProdField('${p.id}','hargaBeli',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Jual/btl (default)</div><input class="prod-field-input" type="number" value="${p.hargaJual}" oninput="setProdField('${p.id}','hargaJual',this.value)"></div>
             </div>
             <div class="prod-field-row">
-              <div class="prod-field"><div class="prod-field-label">Beli/karton</div><input class="prod-field-input" type="number" value="${p.hargaKartonBeli}" onchange="setProdField('${p.id}','hargaKartonBeli',this.value)"></div>
-              <div class="prod-field"><div class="prod-field-label">Jual/karton (default)</div><input class="prod-field-input" type="number" value="${p.hargaKartonJual}" onchange="setProdField('${p.id}','hargaKartonJual',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Beli/karton</div><input class="prod-field-input" type="number" value="${p.hargaKartonBeli}" oninput="setProdField('${p.id}','hargaKartonBeli',this.value)"></div>
+              <div class="prod-field"><div class="prod-field-label">Jual/karton (default)</div><input class="prod-field-input" type="number" value="${p.hargaKartonJual}" oninput="setProdField('${p.id}','hargaKartonJual',this.value)"></div>
             </div>
             <button class="prod-delete-btn" onclick="deleteProd('${p.id}')">🗑 Hapus Produk Ini</button>
           </div>
