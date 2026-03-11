@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Jualan Keliling</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1923;
+    --surface: #1a2738;
+    --surface2: #223044;
+    --accent: #00d4aa;
+    --accent2: #ff6b35;
+    --accent3: #ffd166;
+    --text: #e8f4f0;
+    --muted: #7a9bb5;
+    --danger: #ff4757;
+    --card-radius: 18px;
+    --btn-radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+    padding: 20px 20px 16px;
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 1px solid rgba(0,212,170,0.15);
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .app-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+  .app-title span { color: var(--accent3); }
+  .date-badge { background: rgba(0,212,170,0.12); color: var(--accent); font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(0,212,170,0.25); }
+  .header-stats { display: flex; gap: 10px; margin-top: 12px; }
+  .hstat { flex: 1; background: rgba(255,255,255,0.05); border-radius: 12px; padding: 10px; border: 1px solid rgba(255,255,255,0.06); }
+  .hstat-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .hstat-val { font-size: 15px; font-weight: 900; margin-top: 2px; }
+  .hstat-val.green { color: var(--accent); }
+  .hstat-val.orange { color: var(--accent2); }
+  .hstat-val.yellow { color: var(--accent3); }
+
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: #111d2b; border-top: 1px solid rgba(0,212,170,0.15);
+    display: flex; z-index: 200;
+  }
+  .nav-btn {
+    flex: 1; background: none; border: none; color: var(--muted);
+    padding: 12px 0 10px; font-family: 'Nunito', sans-serif;
+    font-size: 10px; font-weight: 700; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 4px; transition: color 0.2s;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn svg { width: 22px; height: 22px; }
+
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px; margin-top: 4px;
+  }
+
+  /* PRODUCT */
+  .product-grid { display: flex; flex-direction: column; gap: 10px; }
+  .product-card {
+    background: var(--surface); border-radius: var(--card-radius);
+    padding: 14px 16px; border: 1.5px solid rgba(255,255,255,0.05);
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color 0.2s, transform 0.1s; cursor: pointer;
+  }
+  .product-card:active { transform: scale(0.98); }
+  .prod-icon { width: 46px; height: 46px; border-radius: 13px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .prod-info { flex: 1; min-width: 0; }
+  .prod-name { font-weight: 800; font-size: 14px; }
+  .prod-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .prod-price { font-weight: 900; font-size: 13px; color: var(--accent3); margin-top: 2px; }
+  .prod-stok-badge { background: rgba(255,255,255,0.07); border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .prod-stok-badge.low { color: var(--danger); background: rgba(255,71,87,0.12); }
+
+  /* TOKO SELECTOR */
+  .toko-selector-bar {
+    background: var(--surface); border-radius: var(--card-radius);
+    padding: 12px 14px; margin-bottom: 14px;
+    border: 1.5px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; gap: 10px; cursor: pointer;
+  }
+  .toko-sel-icon { font-size: 22px; }
+  .toko-sel-info { flex: 1; }
+  .toko-sel-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .toko-sel-name { font-weight: 800; font-size: 15px; margin-top: 1px; }
+  .toko-sel-name.placeholder { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .toko-sel-chevron { color: var(--muted); }
+  .toko-sel-chevron svg { width: 18px; height: 18px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 500; display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: #1a2738; width: 100%; max-width: 430px;
+    border-radius: 24px 24px 0 0; padding: 20px;
+    animation: slideUp 0.25s ease;
+    max-height: 92vh; overflow-y: auto;
+  }
+  @keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; margin-bottom: 14px; }
+
+  /* TOKO PICKER */
+  .toko-search-input {
+    width: 100%; background: var(--bg);
+    border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px;
+    color: var(--text); font-family: 'Nunito', sans-serif;
+    font-size: 14px; font-weight: 600; padding: 12px 14px; margin-bottom: 12px;
+  }
+  .toko-search-input:focus { outline: none; border-color: var(--accent); }
+  .toko-pick-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+  .toko-pick-item {
+    background: var(--surface2); border-radius: 12px; padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px; cursor: pointer;
+    border: 1.5px solid transparent; transition: border-color 0.15s;
+  }
+  .toko-pick-item.selected { border-color: var(--accent); background: rgba(0,212,170,0.07); }
+  .toko-pick-icon { font-size: 20px; }
+  .toko-pick-info { flex: 1; }
+  .toko-pick-name { font-weight: 800; font-size: 14px; }
+  .toko-pick-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .toko-pick-manual {
+    background: rgba(0,212,170,0.08); border: 1.5px dashed rgba(0,212,170,0.3);
+    border-radius: 12px; padding: 12px 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 12px; margin-top: 4px;
+  }
+  .toko-pick-manual span { font-weight: 700; color: var(--accent); font-size: 14px; }
+
+  /* TRX MODAL */
+  .modal-product-name { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; margin-bottom: 2px; }
+  .modal-sub { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .toko-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,212,170,0.12); border: 1px solid rgba(0,212,170,0.25);
+    border-radius: 20px; padding: 5px 12px; margin-bottom: 14px; cursor: pointer;
+  }
+  .toko-chip-name { font-size: 12px; font-weight: 800; color: var(--accent); }
+  .toko-chip-change { font-size: 10px; color: var(--muted); }
+
+  .satuan-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .satuan-tab {
+    flex: 1; padding: 10px; border-radius: 12px;
+    border: 1.5px solid rgba(255,255,255,0.1);
+    background: none; color: var(--muted);
+    font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 12px;
+    cursor: pointer; transition: all 0.15s; line-height: 1.4;
+  }
+  .satuan-tab.active { background: var(--accent); color: #0f1923; border-color: var(--accent); }
+
+  .qty-row { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 14px; }
+  .qty-btn { width: 52px; height: 52px; border-radius: 16px; border: none; font-size: 28px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+  .qty-btn:active { transform: scale(0.9); }
+  .qty-btn.minus { background: rgba(255,71,87,0.2); color: var(--danger); }
+  .qty-btn.plus { background: rgba(0,212,170,0.2); color: var(--accent); }
+  .qty-display { font-family: 'Syne', sans-serif; font-size: 42px; font-weight: 800; width: 80px; text-align: center; }
+
+  .harga-row {
+    background: var(--surface2); border-radius: 14px; padding: 12px 14px;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .harga-row-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .harga-input-wrap { flex: 1; display: flex; align-items: center; gap: 6px; }
+  .harga-prefix { color: var(--muted); font-size: 13px; font-weight: 700; }
+  .harga-input {
+    flex: 1; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.1);
+    border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif;
+    font-size: 18px; font-weight: 900; padding: 8px 10px; text-align: right;
+    -moz-appearance: textfield; min-width: 0;
+  }
+  .harga-input::-webkit-inner-spin-button, .harga-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .harga-input:focus { outline: none; border-color: var(--accent3); }
+  .harga-source { font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 700; flex-shrink: 0; }
+  .harga-source.toko { background: rgba(0,212,170,0.15); color: var(--accent); }
+  .harga-source.default { background: rgba(255,209,102,0.15); color: var(--accent3); }
+  .harga-source.manual { background: rgba(255,107,53,0.15); color: var(--accent2); }
+
+  .modal-total { background: rgba(0,212,170,0.08); border: 1px solid rgba(0,212,170,0.2); border-radius: 14px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+  .modal-total-label { color: var(--muted); font-size: 13px; font-weight: 700; }
+  .modal-total-val { font-size: 20px; font-weight: 900; color: var(--accent3); }
+  .btn-confirm { width: 100%; padding: 16px; background: var(--accent); color: #0f1923; border: none; border-radius: var(--btn-radius); font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; }
+  .btn-confirm:active { opacity: 0.9; }
+  .btn-cancel { width: 100%; padding: 12px; background: none; color: var(--muted); border: none; border-radius: var(--btn-radius); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+
+  /* STOK */
+  .stok-card { background: var(--surface); border-radius: var(--card-radius); padding: 16px; margin-bottom: 10px; border: 1.5px solid rgba(255,255,255,0.05); }
+  .stok-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .stok-prod-name { font-weight: 800; font-size: 15px; }
+  .stok-prod-meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .stok-input-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+  .stok-input { width: 100%; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 800; padding: 10px 12px; text-align: center; -moz-appearance: textfield; }
+  .stok-input::-webkit-inner-spin-button, .stok-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .stok-input:focus { outline: none; border-color: var(--accent); }
+  .btn-save-stok { width: 100%; padding: 15px; background: linear-gradient(135deg, var(--accent), #00b894); color: #0f1923; border: none; border-radius: var(--btn-radius); font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; margin-top: 6px; }
+
+  /* REKAP */
+  .rekap-date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; background: var(--surface); border-radius: var(--card-radius); padding: 10px 14px; }
+  .date-nav-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; align-items: center; }
+  .date-nav-btn svg { width: 20px; height: 20px; }
+  .date-display { flex: 1; text-align: center; font-weight: 800; font-size: 14px; }
+  .rekap-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .rekap-card { background: var(--surface); border-radius: var(--card-radius); padding: 14px; border: 1.5px solid rgba(255,255,255,0.05); }
+  .rekap-card.full { grid-column: 1 / -1; }
+  .rekap-card-label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .rekap-card-val { font-size: 18px; font-weight: 900; }
+  .rekap-card-val.green { color: var(--accent); }
+  .rekap-card-val.red { color: var(--danger); }
+  .rekap-card-val.yellow { color: var(--accent3); }
+  .rekap-card-val.orange { color: var(--accent2); }
+  .trx-list { display: flex; flex-direction: column; gap: 8px; }
+  .trx-item { background: var(--surface); border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.04); }
+  .trx-icon { font-size: 20px; width: 32px; text-align: center; flex-shrink: 0; }
+  .trx-info { flex: 1; min-width: 0; }
+  .trx-name { font-weight: 800; font-size: 13px; }
+  .trx-toko { font-size: 11px; color: var(--accent); font-weight: 700; }
+  .trx-meta { font-size: 11px; color: var(--muted); }
+  .trx-right { text-align: right; flex-shrink: 0; }
+  .trx-total { font-weight: 900; font-size: 14px; color: var(--accent3); }
+  .trx-time { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .trx-delete { background: rgba(255,71,87,0.12); border: none; color: var(--danger); width: 30px; height: 30px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state-text { font-weight: 700; font-size: 15px; }
+  .empty-state-sub { font-size: 13px; margin-top: 4px; opacity: 0.7; }
+
+  /* TOKO MANAGE */
+  .toko-card { background: var(--surface); border-radius: var(--card-radius); padding: 14px 16px; margin-bottom: 10px; border: 1.5px solid rgba(255,255,255,0.05); }
+  .toko-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .toko-card-icon { font-size: 24px; }
+  .toko-card-name-input { flex: 1; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; padding: 8px 12px; }
+  .toko-card-name-input:focus { outline: none; border-color: var(--accent); }
+  .toko-card-delete { background: rgba(255,71,87,0.12); border: none; color: var(--danger); width: 36px; height: 36px; border-radius: 9px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .toko-harga-section-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+  .toko-prod-harga-block { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .toko-prod-harga-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .toko-prod-label { font-size: 12px; font-weight: 800; color: var(--accent); margin-bottom: 7px; }
+  .toko-harga-row { display: flex; gap: 10px; }
+  .toko-harga-col { flex: 1; }
+  .toko-harga-label { font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+  .toko-harga-input { width: 100%; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.07); border-radius: 9px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800; padding: 8px 10px; text-align: right; -moz-appearance: textfield; }
+  .toko-harga-input::-webkit-inner-spin-button, .toko-harga-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .toko-harga-input:focus { outline: none; border-color: var(--accent3); }
+  .toko-harga-placeholder { font-size: 11px; color: var(--muted); font-style: italic; }
+
+  .btn-add { width: 100%; padding: 14px; background: rgba(0,212,170,0.1); color: var(--accent); border: 1.5px dashed rgba(0,212,170,0.3); border-radius: var(--btn-radius); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800; cursor: pointer; margin-top: 4px; }
+  .btn-save-main { width: 100%; padding: 14px; background: var(--accent); color: #0f1923; border: none; border-radius: var(--btn-radius); font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; margin-top: 10px; }
+
+  /* PRODUK MANAGE */
+  .manage-prod-card { background: var(--surface); border-radius: var(--card-radius); padding: 14px 16px; margin-bottom: 10px; border: 1.5px solid rgba(255,255,255,0.05); }
+  .manage-prod-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .manage-input { width: 100%; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.08); border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; padding: 9px 12px; -moz-appearance: textfield; }
+  .manage-input::-webkit-inner-spin-button, .manage-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .manage-input:focus { outline: none; border-color: var(--accent); }
+  .manage-row { display: flex; gap: 10px; margin-bottom: 8px; }
+  .manage-input-group { flex: 1; }
+  .manage-input-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+  .manage-prod-delete { background: rgba(255,71,87,0.12); border: none; color: var(--danger); width: 36px; height: 36px; border-radius: 9px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 9px; background: var(--surface); border: 1.5px solid rgba(255,255,255,0.07); border-radius: 10px; color: var(--muted); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; transition: all 0.15s; }
+  .tab-btn.active { background: rgba(0,212,170,0.12); color: var(--accent); border-color: rgba(0,212,170,0.3); }
+
+  .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-10px); background: var(--accent); color: #0f1923; padding: 10px 20px; border-radius: 30px; font-weight: 800; font-size: 14px; z-index: 1000; opacity: 0; transition: all 0.3s; white-space: nowrap; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .icon-color-1 { background: rgba(0,212,170,0.15); }
+  .icon-color-2 { background: rgba(255,107,53,0.15); }
+  .icon-color-3 { background: rgba(255,209,102,0.15); }
+  .icon-color-4 { background: rgba(116,185,255,0.15); }
+  .icon-color-5 { background: rgba(162,155,254,0.15); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="app-title">Jualan<span>.</span>ku</div>
+    <div class="date-badge" id="headerDate"></div>
+  </div>
+  <div class="header-stats">
+    <div class="hstat"><div class="hstat-label">Pemasukan</div><div class="hstat-val green" id="statPemasukan">Rp 0</div></div>
+    <div class="hstat"><div class="hstat-label">Modal</div><div class="hstat-val orange" id="statModal">Rp 0</div></div>
+    <div class="hstat"><div class="hstat-label">Untung</div><div class="hstat-val yellow" id="statUntung">Rp 0</div></div>
+  </div>
+</div>
+
+<div class="page active" id="page-jual">
+  <div class="toko-selector-bar" onclick="openTokoPicker()">
+    <div class="toko-sel-icon">🏪</div>
+    <div class="toko-sel-info">
+      <div class="toko-sel-label">Toko Tujuan</div>
+      <div id="tokoSelName" class="toko-sel-name placeholder">Pilih toko atau lanjut tanpa toko...</div>
+    </div>
+    <div class="toko-sel-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6,9 12,15 18,9"/></svg></div>
+  </div>
+  <div class="section-title">Pilih Produk</div>
+  <div class="product-grid" id="productGrid"></div>
+</div>
+
+<div class="page" id="page-stok">
+  <div class="section-title">Stok Hari Ini</div>
+  <div id="stokList"></div>
+  <button class="btn-save-stok" onclick="saveStok()">💾 Simpan Stok</button>
+</div>
+
+<div class="page" id="page-rekap">
+  <div class="rekap-date-nav">
+    <button class="date-nav-btn" onclick="changeRekapDate(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15,18 9,12 15,6"/></svg></button>
+    <div class="date-display" id="rekapDateDisplay"></div>
+    <button class="date-nav-btn" onclick="changeRekapDate(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9,18 15,12 9,6"/></svg></button>
+  </div>
+  <div class="rekap-summary" id="rekapSummary"></div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="setRekapTab('trx', this)">Semua Transaksi</button>
+    <button class="tab-btn" onclick="setRekapTab('toko', this)">Per Toko</button>
+  </div>
+  <div id="rekapContent"></div>
+</div>
+
+<div class="page" id="page-toko">
+  <div class="section-title">Kelola Toko</div>
+  <div id="tokoList"></div>
+  <button class="btn-add" onclick="addNewToko()">+ Tambah Toko Baru</button>
+  <button class="btn-save-main" onclick="saveTokos()">✓ Simpan Toko</button>
+</div>
+
+<div class="page" id="page-produk">
+  <div class="section-title">Kelola Produk</div>
+  <div id="manageProdList"></div>
+  <button class="btn-add" onclick="addNewProd()">+ Tambah Produk Baru</button>
+  <button class="btn-save-main" onclick="saveProducts()">✓ Simpan Produk</button>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="showPage('jual', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+    Jual
+  </button>
+  <button class="nav-btn" onclick="showPage('stok', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+    Stok
+  </button>
+  <button class="nav-btn" onclick="showPage('rekap', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Rekap
+  </button>
+  <button class="nav-btn" onclick="showPage('toko', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    Toko
+  </button>
+  <button class="nav-btn" onclick="showPage('produk', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="15" y="15" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/></svg>
+    Produk
+  </button>
+</nav>
+
+<!-- TOKO PICKER MODAL -->
+<div class="modal-overlay" id="modalTokoPicker" onclick="closeTokoPickerOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Pilih Toko</div>
+    <input class="toko-search-input" id="tokoSearchInput" placeholder="🔍  Cari nama toko..." oninput="filterTokoList(this.value)">
+    <div class="toko-pick-list" id="tokoPickList"></div>
+  </div>
+</div>
+
+<!-- TRX MODAL -->
+<div class="modal-overlay" id="modalTrx" onclick="closeTrxModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-product-name" id="modalProdName"></div>
+    <div class="modal-sub" id="modalProdSub"></div>
+    <div id="modalTokoChip"></div>
+    <div class="satuan-tabs" id="satuanTabs"></div>
+    <div class="qty-row">
+      <button class="qty-btn minus" onclick="changeQty(-1)">−</button>
+      <div class="qty-display" id="qtyDisplay">1</div>
+      <button class="qty-btn plus" onclick="changeQty(1)">+</button>
+    </div>
+    <div class="harga-row">
+      <div class="harga-row-label">Harga Jual</div>
+      <div class="harga-input-wrap">
+        <span class="harga-prefix">Rp</span>
+        <input class="harga-input" type="number" id="hargaJualInput" oninput="onHargaManualChange()">
+      </div>
+      <div class="harga-source" id="hargaSource">default</div>
+    </div>
+    <div class="modal-total">
+      <div class="modal-total-label">Total Bayar</div>
+      <div class="modal-total-val" id="modalTotal">Rp 0</div>
+    </div>
+    <button class="btn-confirm" onclick="confirmTrx()">✓ Catat Transaksi</button>
+    <button class="btn-cancel" onclick="document.getElementById('modalTrx').classList.remove('open')">Batal</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ICON_COLORS = ['icon-color-1','icon-color-2','icon-color-3','icon-color-4','icon-color-5'];
+const defaultProducts = [
+  { id:1, name:'Air Mineral Kecil', brand:'600ml', icon:'💧', iconColor:'icon-color-1', hargaBeli:2000, hargaJual:3000, satuanKarton:24, hargaKartonBeli:44000, hargaKartonJual:65000 },
+  { id:2, name:'Air Mineral Tanggung', brand:'1500ml', icon:'💧', iconColor:'icon-color-2', hargaBeli:3500, hargaJual:5000, satuanKarton:12, hargaKartonBeli:38000, hargaKartonJual:55000 },
+  { id:3, name:'Air Galon', brand:'19 Liter', icon:'🪣', iconColor:'icon-color-3', hargaBeli:15000, hargaJual:20000, satuanKarton:1, hargaKartonBeli:15000, hargaKartonJual:20000 },
+  { id:4, name:'Minuman Teh/Juice', brand:'Kemasan', icon:'🧃', iconColor:'icon-color-4', hargaBeli:3000, hargaJual:4500, satuanKarton:24, hargaKartonBeli:65000, hargaKartonJual:96000 },
+];
+const defaultTokos = [
+  { id:1, name:'Warung Bu Sari', icon:'🏪', harga:{} },
+  { id:2, name:'Toko Pak Budi', icon:'🛒', harga:{} },
+];
+
+let products   = JSON.parse(localStorage.getItem('jk_products') || 'null') || defaultProducts;
+let tokos      = JSON.parse(localStorage.getItem('jk_tokos')    || 'null') || defaultTokos;
+let stokHarian = JSON.parse(localStorage.getItem('jk_stok')     || '{}');
+let transaksi  = JSON.parse(localStorage.getItem('jk_trx')      || '{}');
+
+let selectedToko  = null;
+let selectedProd  = null;
+let currentQty    = 1;
+let currentSatuan = 'satuan';
+let hargaManual   = false;
+let rekapDate     = todayKey();
+let rekapTab      = 'trx';
+
+function todayKey() { return new Date().toISOString().split('T')[0]; }
+function formatDate(k) { const d = new Date(k+'T00:00:00'); return d.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }
+function formatRp(n) { if(n>=1000000) return 'Rp '+(n/1000000).toFixed(1)+'jt'; if(n>=1000) return 'Rp '+(n/1000).toFixed(0)+'rb'; return 'Rp '+n; }
+function formatRpFull(n) { return 'Rp '+n.toLocaleString('id-ID'); }
+function saveAll() {
+  localStorage.setItem('jk_products', JSON.stringify(products));
+  localStorage.setItem('jk_tokos',    JSON.stringify(tokos));
+  localStorage.setItem('jk_stok',     JSON.stringify(stokHarian));
+  localStorage.setItem('jk_trx',      JSON.stringify(transaksi));
+}
+function getDateTrx(k) { return transaksi[k] || []; }
+function calcStats(k) {
+  let pem=0, mod=0;
+  getDateTrx(k).forEach(t => { pem += t.total; mod += t.totalBeli; });
+  return { pemasukan:pem, modal:mod, untung:pem-mod };
+}
+function getHargaToko(tokoId, prodId, satuan) {
+  const t = tokos.find(t => t.id===tokoId);
+  if (!t) return null;
+  return t.harga[prodId+'_'+satuan] || null;
+}
+
+function updateHeader() {
+  const d = new Date();
+  document.getElementById('headerDate').textContent = d.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+  const s = calcStats(todayKey());
+  document.getElementById('statPemasukan').textContent = formatRp(s.pemasukan);
+  document.getElementById('statModal').textContent     = formatRp(s.modal);
+  document.getElementById('statUntung').textContent    = formatRp(s.untung);
+}
+
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='jual')   renderJual();
+  if (name==='stok')   renderStok();
+  if (name==='rekap')  renderRekap();
+  if (name==='toko')   renderTokoManage();
+  if (name==='produk') renderManageProd();
+}
+
+// ── JUAL ──────────────────────────────────────────────────────────
+function renderJual() {
+  const tokoEl = document.getElementById('tokoSelName');
+  if (selectedToko) { tokoEl.textContent = selectedToko.icon+' '+selectedToko.name; tokoEl.classList.remove('placeholder'); }
+  else { tokoEl.textContent = 'Pilih toko atau lanjut tanpa toko...'; tokoEl.classList.add('placeholder'); }
+  const today = todayKey();
+  const stok = stokHarian[today] || {};
+  document.getElementById('productGrid').innerHTML = products.map(p => {
+    const s = stok[p.id];
+    const terjual = getDateTrx(today).filter(t=>t.prodId===p.id)
+      .reduce((sum,t) => sum+(t.satuan==='satuan'?t.qty:t.qty*p.satuanKarton), 0);
+    const sisa = s ? s.awal-terjual : null;
+    const low = sisa!==null && sisa<5;
+    const hjSat = (selectedToko && getHargaToko(selectedToko.id,p.id,'satuan')) || p.hargaJual;
+    const hjKrt = (selectedToko && getHargaToko(selectedToko.id,p.id,'karton')) || p.hargaKartonJual;
+    return `<div class="product-card" onclick="openTrxModal(${p.id})">
+      <div class="prod-icon ${p.iconColor}">${p.icon}</div>
+      <div class="prod-info">
+        <div class="prod-name">${p.name}</div>
+        <div class="prod-meta">${p.brand}</div>
+        <div class="prod-price">${formatRp(hjSat)}/btl${p.satuanKarton>1?' · '+formatRp(hjKrt)+'/krt':''}</div>
+      </div>
+      <div class="prod-stok-badge ${low?'low':''}">${sisa!==null?'Sisa '+sisa:'Stok ?'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── TOKO PICKER ───────────────────────────────────────────────────
+function openTokoPicker() {
+  document.getElementById('tokoSearchInput').value = '';
+  renderTokoPickList('');
+  document.getElementById('modalTokoPicker').classList.add('open');
+}
+function closeTokoPickerOutside(e) { if(e.target.id==='modalTokoPicker') document.getElementById('modalTokoPicker').classList.remove('open'); }
+function renderTokoPickList(q) {
+  const filtered = tokos.filter(t => t.name.toLowerCase().includes(q.toLowerCase()));
+  document.getElementById('tokoPickList').innerHTML =
+    `<div class="toko-pick-item ${!selectedToko?'selected':''}" onclick="selectToko(null)">
+      <div class="toko-pick-icon">🏠</div>
+      <div class="toko-pick-info"><div class="toko-pick-name">Umum / Tanpa Toko</div><div class="toko-pick-meta">Gunakan harga default produk</div></div>
+    </div>` +
+    filtered.map(t => `<div class="toko-pick-item ${selectedToko&&selectedToko.id===t.id?'selected':''}" onclick="selectToko(${t.id})">
+      <div class="toko-pick-icon">${t.icon}</div>
+      <div class="toko-pick-info"><div class="toko-pick-name">${t.name}</div><div class="toko-pick-meta">${getTokoPreview(t)}</div></div>
+    </div>`).join('') +
+    `<div class="toko-pick-manual" onclick="goAddToko()"><div class="toko-pick-icon">➕</div><span>Tambah toko baru</span></div>`;
+}
+function getTokoPreview(t) {
+  const c = Object.keys(t.harga||{}).length;
+  return c>0 ? c+' harga khusus' : 'Belum ada harga khusus';
+}
+function filterTokoList(q) { renderTokoPickList(q); }
+function selectToko(id) {
+  selectedToko = id ? tokos.find(t=>t.id===id) : null;
+  document.getElementById('modalTokoPicker').classList.remove('open');
+  renderJual();
+}
+function goAddToko() {
+  document.getElementById('modalTokoPicker').classList.remove('open');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn')[3].classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-toko').classList.add('active');
+  renderTokoManage(); addNewToko();
+}
+
+// ── TRX MODAL ─────────────────────────────────────────────────────
+function openTrxModal(prodId) {
+  selectedProd  = products.find(p=>p.id===prodId);
+  currentQty    = 1;
+  currentSatuan = 'satuan';
+  hargaManual   = false;
+  document.getElementById('modalProdName').textContent = selectedProd.name;
+  document.getElementById('modalProdSub').textContent  = selectedProd.brand;
+  document.getElementById('modalTokoChip').innerHTML = selectedToko
+    ? `<div class="toko-chip" onclick="switchTokoFromTrx()"><span class="toko-chip-name">${selectedToko.icon} ${selectedToko.name}</span><span class="toko-chip-change">ganti ▾</span></div>`
+    : `<div class="toko-chip" onclick="switchTokoFromTrx()"><span class="toko-chip-name">🏠 Umum</span><span class="toko-chip-change">pilih toko ▾</span></div>`;
+  renderSatuanTabs();
+  updateHargaInput();
+  document.getElementById('modalTrx').classList.add('open');
+}
+function switchTokoFromTrx() {
+  document.getElementById('modalTrx').classList.remove('open');
+  setTimeout(openTokoPicker, 150);
+}
+function closeTrxModal(e) { if(e.target.id==='modalTrx') document.getElementById('modalTrx').classList.remove('open'); }
+
+function getEffectiveHarga() {
+  if (selectedToko) { const h = getHargaToko(selectedToko.id,selectedProd.id,'satuan'); if(h) return h; }
+  return selectedProd.hargaJual;
+}
+function getEffectiveHargaKarton() {
+  if (selectedToko) { const h = getHargaToko(selectedToko.id,selectedProd.id,'karton'); if(h) return h; }
+  return selectedProd.hargaKartonJual;
+}
+function getBaseHarga() { return currentSatuan==='satuan' ? getEffectiveHarga() : getEffectiveHargaKarton(); }
+
+function renderSatuanTabs() {
+  document.getElementById('satuanTabs').innerHTML =
+    `<button class="satuan-tab ${currentSatuan==='satuan'?'active':''}" onclick="setSatuan('satuan')">Satuan<br><small>${formatRp(getEffectiveHarga())}/btl</small></button>` +
+    (selectedProd.satuanKarton>1 ? `<button class="satuan-tab ${currentSatuan==='karton'?'active':''}" onclick="setSatuan('karton')">Karton (${selectedProd.satuanKarton} btl)<br><small>${formatRp(getEffectiveHargaKarton())}/krt</small></button>` : '');
+}
+function updateHargaInput() {
+  if (!hargaManual) document.getElementById('hargaJualInput').value = getBaseHarga();
+  updateTotal();
+  const src = document.getElementById('hargaSource');
+  if (hargaManual) { src.textContent='manual'; src.className='harga-source manual'; }
+  else if (selectedToko && getHargaToko(selectedToko.id,selectedProd.id,currentSatuan)) { src.textContent='toko'; src.className='harga-source toko'; }
+  else { src.textContent='default'; src.className='harga-source default'; }
+}
+function onHargaManualChange() {
+  hargaManual = true;
+  document.getElementById('hargaSource').textContent = 'manual';
+  document.getElementById('hargaSource').className = 'harga-source manual';
+  updateTotal();
+}
+function updateTotal() {
+  const h = parseInt(document.getElementById('hargaJualInput').value)||0;
+  document.getElementById('qtyDisplay').textContent = currentQty;
+  document.getElementById('modalTotal').textContent = formatRpFull(h*currentQty);
+}
+function setSatuan(s) { currentSatuan=s; currentQty=1; hargaManual=false; renderSatuanTabs(); updateHargaInput(); }
+function changeQty(d) { currentQty=Math.max(1,currentQty+d); updateTotal(); }
+
+function confirmTrx() {
+  const today = todayKey();
+  if (!transaksi[today]) transaksi[today] = [];
+  const hargaJual = parseInt(document.getElementById('hargaJualInput').value)||0;
+  const hargaBeli = currentSatuan==='satuan' ? selectedProd.hargaBeli : selectedProd.hargaKartonBeli;
+  transaksi[today].push({
+    id: Date.now(),
+    prodId: selectedProd.id, prodName: selectedProd.name, icon: selectedProd.icon,
+    tokoId: selectedToko ? selectedToko.id : null,
+    tokoName: selectedToko ? selectedToko.name : 'Umum',
+    qty: currentQty, satuan: currentSatuan,
+    satuanLabel: currentSatuan==='satuan'?'btl':'krt',
+    hargaJual, total: hargaJual*currentQty, totalBeli: hargaBeli*currentQty,
+    time: new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})
+  });
+  saveAll();
+  document.getElementById('modalTrx').classList.remove('open');
+  updateHeader(); renderJual();
+  showToast(`✓ ${currentQty} ${currentSatuan==='karton'?'krt':'btl'} ${selectedProd.name} → ${selectedToko?selectedToko.name:'Umum'}`);
+}
+
+// ── STOK ──────────────────────────────────────────────────────────
+function renderStok() {
+  const today = todayKey();
+  const stok = stokHarian[today]||{};
+  document.getElementById('stokList').innerHTML = products.map(p => {
+    const s = stok[p.id]||{awal:''};
+    return `<div class="stok-card">
+      <div class="stok-card-header">
+        <div class="prod-icon ${p.iconColor}" style="width:42px;height:42px;border-radius:12px;font-size:20px">${p.icon}</div>
+        <div><div class="stok-prod-name">${p.name}</div><div class="stok-prod-meta">${p.brand}</div></div>
+      </div>
+      <div class="stok-input-label">Stok Awal (botol)</div>
+      <input class="stok-input" type="number" id="stok_${p.id}" value="${s.awal}" placeholder="0" min="0">
+    </div>`;
+  }).join('');
+}
+function saveStok() {
+  const today = todayKey();
+  if (!stokHarian[today]) stokHarian[today]={};
+  products.forEach(p => { stokHarian[today][p.id]={ awal: parseInt(document.getElementById('stok_'+p.id).value)||0 }; });
+  saveAll(); renderJual(); showToast('✓ Stok tersimpan!');
+}
+
+// ── REKAP ─────────────────────────────────────────────────────────
+function changeRekapDate(d) {
+  const date = new Date(rekapDate+'T00:00:00'); date.setDate(date.getDate()+d);
+  const nk = date.toISOString().split('T')[0];
+  if (nk>todayKey()) return;
+  rekapDate=nk; renderRekap();
+}
+function setRekapTab(tab, btn) {
+  rekapTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRekapContent();
+}
+function renderRekap() {
+  document.getElementById('rekapDateDisplay').textContent = formatDate(rekapDate);
+  const s = calcStats(rekapDate);
+  document.getElementById('rekapSummary').innerHTML = `
+    <div class="rekap-card"><div class="rekap-card-label">Pemasukan</div><div class="rekap-card-val green">${formatRpFull(s.pemasukan)}</div></div>
+    <div class="rekap-card"><div class="rekap-card-label">Modal</div><div class="rekap-card-val orange">${formatRpFull(s.modal)}</div></div>
+    <div class="rekap-card full"><div class="rekap-card-label">Keuntungan Bersih</div><div class="rekap-card-val ${s.untung>=0?'yellow':'red'}">${formatRpFull(s.untung)}</div></div>`;
+  renderRekapContent();
+}
+function renderRekapContent() {
+  const trxs = getDateTrx(rekapDate);
+  const el = document.getElementById('rekapContent');
+  if (rekapTab==='trx') {
+    if (!trxs.length) { el.innerHTML=emptyState(); return; }
+    el.innerHTML = '<div class="trx-list">'+[...trxs].reverse().map(t=>`
+      <div class="trx-item">
+        <div class="trx-icon">${t.icon}</div>
+        <div class="trx-info">
+          <div class="trx-name">${t.prodName}</div>
+          <div class="trx-toko">🏪 ${t.tokoName}</div>
+          <div class="trx-meta">${t.qty} ${t.satuanLabel} · ${formatRp(t.hargaJual)}/${t.satuanLabel} · Untung ${formatRp(t.total-t.totalBeli)}</div>
+        </div>
+        <div class="trx-right"><div class="trx-total">${formatRpFull(t.total)}</div><div class="trx-time">${t.time}</div></div>
+        <button class="trx-delete" onclick="deleteTrx('${rekapDate}',${t.id})">✕</button>
+      </div>`).join('')+'</div>';
+  } else {
+    const byToko = {};
+    trxs.forEach(t => { if(!byToko[t.tokoName]) byToko[t.tokoName]={total:0,trxs:[]}; byToko[t.tokoName].total+=t.total; byToko[t.tokoName].trxs.push(t); });
+    if (!Object.keys(byToko).length) { el.innerHTML=emptyState(); return; }
+    el.innerHTML = Object.entries(byToko).sort((a,b)=>b[1].total-a[1].total).map(([name,data])=>`
+      <div class="rekap-card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-weight:800;font-size:15px">🏪 ${name}</div>
+          <div style="font-weight:900;color:var(--accent3)">${formatRpFull(data.total)}</div>
+        </div>
+        ${data.trxs.map(t=>`<div style="font-size:12px;color:var(--muted);padding:4px 0;border-top:1px solid rgba(255,255,255,0.05)">${t.prodName} · ${t.qty} ${t.satuanLabel} · ${formatRp(t.hargaJual)}/${t.satuanLabel}</div>`).join('')}
+      </div>`).join('');
+  }
+}
+function emptyState() { return `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">Belum ada transaksi</div><div class="empty-state-sub">Tanggal ini kosong</div></div>`; }
+function deleteTrx(dk, id) {
+  if (!confirm('Hapus transaksi ini?')) return;
+  transaksi[dk]=transaksi[dk].filter(t=>t.id!==id);
+  saveAll(); updateHeader(); renderRekap(); renderJual();
+}
+
+// ── TOKO MANAGE ───────────────────────────────────────────────────
+function renderTokoManage() {
+  document.getElementById('tokoList').innerHTML = tokos.map((t,i)=>`
+    <div class="toko-card">
+      <div class="toko-card-header">
+        <div class="toko-card-icon">${t.icon}</div>
+        <input class="toko-card-name-input" value="${t.name}" onchange="tokos[${i}].name=this.value" placeholder="Nama Toko">
+        <button class="toko-card-delete" onclick="deleteToko(${i})">✕</button>
+      </div>
+      <div class="toko-harga-section-label">Harga Khusus (kosongkan = pakai harga default)</div>
+      <div class="toko-harga-grid">
+        ${products.map(p=>{
+          const kS=p.id+'_satuan', kK=p.id+'_karton';
+          return `<div class="toko-prod-harga-block">
+            <div class="toko-prod-label">${p.icon} ${p.name}</div>
+            <div class="toko-harga-row">
+              <div class="toko-harga-col">
+                <div class="toko-harga-label">Harga/botol (default: ${formatRp(p.hargaJual)})</div>
+                <input class="toko-harga-input" type="number" value="${t.harga[kS]||''}" placeholder="${p.hargaJual}" onchange="setTokoHarga(${i},'${kS}',this.value)">
+              </div>
+              ${p.satuanKarton>1?`<div class="toko-harga-col">
+                <div class="toko-harga-label">Harga/karton (default: ${formatRp(p.hargaKartonJual)})</div>
+                <input class="toko-harga-input" type="number" value="${t.harga[kK]||''}" placeholder="${p.hargaKartonJual}" onchange="setTokoHarga(${i},'${kK}',this.value)">
+              </div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+function setTokoHarga(ti, key, val) {
+  const v = parseInt(val);
+  if (v>0) tokos[ti].harga[key]=v; else delete tokos[ti].harga[key];
+}
+function addNewToko() {
+  const icons = ['🏪','🛒','🏬','🏠','⛺','🌾','🏗️'];
+  tokos.push({ id:Date.now(), name:'Toko Baru', icon:icons[tokos.length%icons.length], harga:{} });
+  renderTokoManage();
+  setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),50);
+}
+function deleteToko(i) {
+  if (!confirm('Hapus toko '+tokos[i].name+'?')) return;
+  if (selectedToko&&selectedToko.id===tokos[i].id) selectedToko=null;
+  tokos.splice(i,1); renderTokoManage();
+}
+function saveTokos() { saveAll(); renderJual(); showToast('✓ Data toko tersimpan!'); }
+
+// ── PRODUK MANAGE ─────────────────────────────────────────────────
+function renderManageProd() {
+  document.getElementById('manageProdList').innerHTML = products.map((p,i)=>`
+    <div class="manage-prod-card">
+      <div class="manage-prod-header">
+        <div class="prod-icon ${p.iconColor}" style="width:40px;height:40px;border-radius:11px;font-size:20px">${p.icon}</div>
+        <input class="manage-input" style="flex:1" value="${p.name}" onchange="products[${i}].name=this.value" placeholder="Nama produk">
+        <button class="manage-prod-delete" onclick="deleteProd(${i})">✕</button>
+      </div>
+      <div class="manage-row">
+        <div class="manage-input-group"><div class="manage-input-label">Keterangan</div><input class="manage-input" value="${p.brand}" onchange="products[${i}].brand=this.value" placeholder="ex: 600ml"></div>
+        <div class="manage-input-group"><div class="manage-input-label">Isi Karton</div><input class="manage-input" type="number" value="${p.satuanKarton}" onchange="products[${i}].satuanKarton=parseInt(this.value)||1"></div>
+      </div>
+      <div class="manage-row">
+        <div class="manage-input-group"><div class="manage-input-label">Beli/btl</div><input class="manage-input" type="number" value="${p.hargaBeli}" onchange="products[${i}].hargaBeli=parseInt(this.value)||0"></div>
+        <div class="manage-input-group"><div class="manage-input-label">Jual/btl (default)</div><input class="manage-input" type="number" value="${p.hargaJual}" onchange="products[${i}].hargaJual=parseInt(this.value)||0"></div>
+      </div>
+      <div class="manage-row">
+        <div class="manage-input-group"><div class="manage-input-label">Beli/karton</div><input class="manage-input" type="number" value="${p.hargaKartonBeli}" onchange="products[${i}].hargaKartonBeli=parseInt(this.value)||0"></div>
+        <div class="manage-input-group"><div class="manage-input-label">Jual/karton (default)</div><input class="manage-input" type="number" value="${p.hargaKartonJual}" onchange="products[${i}].hargaKartonJual=parseInt(this.value)||0"></div>
+      </div>
+    </div>`).join('');
+}
+function addNewProd() {
+  products.push({ id:Date.now(), name:'Produk Baru', brand:'', icon:'📦', iconColor:ICON_COLORS[products.length%ICON_COLORS.length], hargaBeli:0, hargaJual:0, satuanKarton:12, hargaKartonBeli:0, hargaKartonJual:0 });
+  renderManageProd();
+  setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),50);
+}
+function deleteProd(i) { if(!confirm('Hapus produk '+products[i].name+'?')) return; products.splice(i,1); renderManageProd(); }
+function saveProducts() { saveAll(); renderJual(); showToast('✓ Produk tersimpan!'); }
+
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+updateHeader(); renderJual(); rekapDate=todayKey();
+</script>
+</body>
+</html>
