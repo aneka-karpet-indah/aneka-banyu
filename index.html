@@ -431,13 +431,14 @@ function updatePinDots(isError) {
   }
 }
 function processPinInput() {
+  // Baca savedPin dari module (disync via window._savedPin)
+  var effectivePin = window._savedPin !== undefined ? window._savedPin : savedPin;
   if (pinMode === 'login') {
-    if (pinInput === savedPin) {
+    if (pinInput === effectivePin) {
       sessionStorage.setItem('ab_unlocked','1');
       document.getElementById('pinScreen').classList.add('hidden');
       pinUnlocked = true;
-      if(typeof updateHeader==='function') updateHeader();
-      if(typeof renderJual==='function') renderJual();
+      if(typeof window._renderApp==='function') window._renderApp();
     } else {
       document.getElementById('pinError').textContent = 'PIN salah, coba lagi';
       updatePinDots(true);
@@ -452,14 +453,14 @@ function processPinInput() {
   } else if (pinMode === 'setup2') {
     if (pinInput === pinFirst) {
       savedPin = pinInput;
+      window._savedPin = savedPin;
       pinFirst = ''; pinInput = '';
       if(typeof fbSavePin==='function') fbSavePin(savedPin);
       sessionStorage.setItem('ab_unlocked','1');
       document.getElementById('pinScreen').classList.add('hidden');
       pinUnlocked = true;
       if(typeof showToast==='function') showToast('✓ PIN berhasil dibuat!');
-      if(typeof updateHeader==='function') updateHeader();
-      if(typeof renderJual==='function') renderJual();
+      if(typeof window._renderApp==='function') window._renderApp();
     } else {
       document.getElementById('pinError').textContent = 'PIN tidak cocok, ulangi dari awal';
       updatePinDots(true);
@@ -484,6 +485,7 @@ function processPinInput() {
     } else {
       if (pinInput === pinFirst) {
         savedPin=pinInput;
+        window._savedPin = savedPin;
         pinFirst=''; pinInput='';
         if(typeof fbSavePin==='function') fbSavePin(savedPin);
         sessionStorage.setItem('ab_unlocked','1');
@@ -528,14 +530,15 @@ function forgotPin() {
 }
 
 function initPin() {
-  if (sessionStorage.getItem('ab_unlocked') === '1' && savedPin) {
+  var effectivePin = (window._savedPin !== undefined && window._savedPin !== '') ? window._savedPin : savedPin;
+  savedPin = effectivePin;
+  if (sessionStorage.getItem('ab_unlocked') === '1' && effectivePin) {
     document.getElementById('pinScreen').classList.add('hidden');
     pinUnlocked = true;
-    if(typeof updateHeader==='function') updateHeader();
-    if(typeof renderJual==='function') renderJual();
+    if(typeof window._renderApp==='function') window._renderApp();
     return;
   }
-  if (!savedPin) {
+  if (!effectivePin) {
     pinMode = 'setup';
     document.getElementById('pinTitle').textContent = 'Buat PIN baru (4 digit)';
     document.getElementById('pinSubtitle').textContent = 'Selamat datang! Buat PIN untuk mengamankan aplikasi';
@@ -638,7 +641,9 @@ async function fbLoad() {
     transaksi = {};
     trxSnap.forEach(d=>{transaksi[d.id]=d.data().list||[];});
 
-    // Init PIN
+    // Sync savedPin ke variabel global non-module, lalu init PIN
+    window._savedPin = savedPin;
+    window._appReady = true;
     initPin();
   } catch(e) {
     console.error(e);
@@ -1038,6 +1043,14 @@ window.deleteProd=function(prodId){
 window.saveProducts=async function(){await fbSave('config','products',{list:products});renderJual();showToast('✓ Produk tersimpan!');}
 
 // ── INIT ──────────────────────────────────────────────────────────
+// Expose render functions ke global agar bisa dipanggil dari non-module PIN script
+window._renderApp = function() {
+  updateHeader();
+  renderJual();
+};
+window.showToast = showToast;
+window.fbSavePin = function(pin) { fbSave('config','pin',{pin:pin}); };
+
 document.getElementById('headerDate').textContent=new Date().toLocaleDateString('id-ID',{day:'numeric',month:'short'});
 fbLoad();
 </script>
