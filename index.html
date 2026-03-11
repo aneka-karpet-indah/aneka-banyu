@@ -270,6 +270,7 @@
     <button class="pin-key del" onclick="pinDel()">⌫</button>
   </div>
   <div class="pin-change-link" id="pinChangeLink" style="display:none" onclick="startChangePin()">Ganti PIN</div>
+  <div class="pin-change-link" id="pinForgotLink" style="margin-top:8px;color:var(--danger);opacity:0.6" onclick="forgotPin()">Lupa PIN?</div>
 </div>
 
 <!-- MAIN APP -->
@@ -504,6 +505,28 @@ function startChangePin() {
   document.getElementById('pinScreen').classList.remove('hidden');
   updatePinDots();
 }
+function forgotPin() {
+  var kata = prompt('Masukkan kata sandi darurat untuk reset PIN:');
+  if (kata === null) return; // batal
+  if (kata.toLowerCase() === 'kiel') {
+    if (!confirm('Reset PIN sekarang? Kamu akan diminta buat PIN baru.')) return;
+    // Hapus PIN dari Firebase via flag, initPin akan handle setup
+    savedPin = '';
+    sessionStorage.removeItem('ab_unlocked');
+    if (typeof fbSavePin === 'function') fbSavePin('');
+    document.getElementById('pinChangeLink').style.display = 'none';
+    pinMode = 'setup';
+    pinInput = ''; pinFirst = '';
+    document.getElementById('pinTitle').textContent = 'Buat PIN baru (4 digit)';
+    document.getElementById('pinSubtitle').textContent = 'Selamat datang! Buat PIN untuk mengamankan aplikasi';
+    document.getElementById('pinScreen').classList.remove('hidden');
+    updatePinDots();
+    document.getElementById('pinError').textContent = '';
+  } else {
+    alert('Kata sandi salah!');
+  }
+}
+
 function initPin() {
   if (sessionStorage.getItem('ab_unlocked') === '1' && savedPin) {
     document.getElementById('pinScreen').classList.add('hidden');
