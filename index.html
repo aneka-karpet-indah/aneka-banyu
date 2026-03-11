@@ -728,63 +728,111 @@ window.confirmTrx=async function(){
   await fbSave('transaksi',today,{list:transaksi[today]});
 }
 
-// ── STOK ──────────────────────────────────────────────────────────
+// ── STOK ────────────────────────────────────────────────────────────────
 window.setStokTab=function(tab,btn){
   stokTab=tab;
   document.querySelectorAll('.stok-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active'); renderStok();
 }
+
+function getTerjual(prodId, dateKey) {
+  const p = products.find(p=>p.id===prodId);
+  if (!p) return 0;
+  return getDateTrx(dateKey).filter(t=>t.prodId===prodId)
+    .reduce((sum,t)=>sum+(t.satuan==='satuan'?t.qty:t.qty*p.satuanKarton),0);
+}
+
 function renderStok(){
   const today=todayKey();
   if(stokTab==='mobil'){
     const stok=stokHarian[today]||{};
-    document.getElementById('stokContent').innerHTML=products.map(p=>{
-      const s=stok[p.id]||{awal:0};
-      const terjual=getDateTrx(today).filter(t=>t.prodId===p.id).reduce((sum,t)=>sum+(t.satuan==='satuan'?t.qty:t.qty*p.satuanKarton),0);
-      const sisa=s.awal-terjual;
-      return `<div class="stok-card">
-        <div class="stok-card-header">
-          <div class="prod-icon ${p.iconColor}" style="width:42px;height:42px;border-radius:12px;font-size:20px">${p.icon}</div>
-          <div><div class="stok-prod-name">${p.name}</div><div class="stok-prod-meta">${p.brand}</div></div>
-        </div>
-        <div class="stok-input-label">Stok Dibawa ke Mobil (botol)</div>
-        <input class="stok-input" type="number" id="stokMobil_${p.id}" value="${s.awal||''}" placeholder="0" min="0">
-        <div class="stok-info-row">
-          <div class="stok-info-item"><div class="stok-info-label">Terjual</div><div class="stok-info-val" style="color:var(--accent)">${terjual}</div></div>
-          <div class="stok-info-item"><div class="stok-info-label">Sisa di Mobil</div><div class="stok-info-val" style="color:${sisa<5?'var(--danger)':'var(--accent3)'}">${sisa}</div></div>
-          <div class="stok-info-item"><div class="stok-info-label">Di Gudang</div><div class="stok-info-val" style="color:var(--muted)">${stokGudang[p.id]||0}</div></div>
-        </div>
-      </div>`;
-    }).join('')+`<button class="btn-save-stok" onclick="saveStokMobil()">💾 Simpan Stok Mobil</button>`;
-  } else {
-    document.getElementById('stokContent').innerHTML=products.map(p=>{
-      return `<div class="stok-card">
-        <div class="stok-card-header">
-          <div class="prod-icon ${p.iconColor}" style="width:42px;height:42px;border-radius:12px;font-size:20px">${p.icon}</div>
-          <div><div class="stok-prod-name">${p.name}</div><div class="stok-prod-meta">${p.brand}</div></div>
-        </div>
-        <div class="stok-row">
-          <div class="stok-col">
-            <div class="stok-input-label">Stok Gudang (botol)</div>
-            <input class="stok-input" type="number" id="stokGudang_${p.id}" value="${stokGudang[p.id]||''}" placeholder="0" min="0">
+    document.getElementById('stokContent').innerHTML=
+      '<div style="background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.2);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--accent);font-weight:700;">'+
+      '📋 Input jumlah yang diambil dari gudang ke mobil pagi ini, lalu klik Simpan.'+
+      '</div>'+
+      products.map(p=>{
+        const s=stok[p.id]||{awal:0};
+        const terjual=getTerjual(p.id, today);
+        const sisa=s.awal-terjual;
+        const gudang=stokGudang[p.id]||0;
+        return `<div class="stok-card">
+          <div class="stok-card-header">
+            <div class="prod-icon ${p.iconColor}" style="width:42px;height:42px;border-radius:12px;font-size:20px">${p.icon}</div>
+            <div><div class="stok-prod-name">${p.name}</div><div class="stok-prod-meta">${p.brand}</div></div>
           </div>
+          <div class="stok-input-label">Ambil dari Gudang ke Mobil (botol)</div>
+          <input class="stok-input" type="number" id="stokMobil_${p.id}" value="${s.awal||''}" placeholder="0" min="0" max="${gudang}">
+          <div class="stok-info-row">
+            <div class="stok-info-item"><div class="stok-info-label">Stok Gudang</div><div class="stok-info-val" style="color:var(--muted)">${gudang}</div></div>
+            <div class="stok-info-item"><div class="stok-info-label">Terjual</div><div class="stok-info-val" style="color:var(--accent)">${terjual}</div></div>
+            <div class="stok-info-item"><div class="stok-info-label">Sisa Mobil</div><div class="stok-info-val" style="color:${sisa<5?'var(--danger)":'var(--accent3)'}">${sisa}</div></div>
+          </div>
+        </div>`;
+      }).join('')+'<button class="btn-save-stok" onclick="saveStokMobil()">🚐 Simpan & Kurangi Stok Gudang</button>';
+  } else {
+    document.getElementById('stokContent').innerHTML=
+      '<div style="background:rgba(255,209,102,0.08);border:1px solid rgba(255,209,102,0.2);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--accent3);font-weight:700;">'+
+      '🏠 Ini adalah stok total di gudang. Update saat ada barang masuk (restok).'+
+      '</div>'+
+      products.map(p=>`<div class="stok-card">
+        <div class="stok-card-header">
+          <div class="prod-icon ${p.iconColor}" style="width:42px;height:42px;border-radius:12px;font-size:20px">${p.icon}</div>
+          <div><div class="stok-prod-name">${p.name}</div><div class="stok-prod-meta">${p.brand}</div></div>
         </div>
-      </div>`;
-    }).join('')+`<button class="btn-save-stok" onclick="saveStokGudang()">💾 Simpan Stok Gudang</button>`;
+        <div class="stok-input-label">Stok Gudang (botol)</div>
+        <input class="stok-input" type="number" id="stokGudang_${p.id}" value="${stokGudang[p.id]||''}" placeholder="0" min="0">
+      </div>`).join('')+'<button class="btn-save-stok" style="background:linear-gradient(135deg,var(--accent3),#f0a500);color:#0f1923" onclick="saveStokGudang()">💾 Simpan Stok Gudang</button>';
   }
 }
+
 window.saveStokMobil=async function(){
   const today=todayKey();
   if(!stokHarian[today]) stokHarian[today]={};
-  products.forEach(p=>{stokHarian[today][p.id]={awal:parseInt(document.getElementById('stokMobil_'+p.id).value)||0};});
-  renderJual(); showToast('✓ Stok mobil tersimpan!');
-  await fbSave('config','stok',stokHarian);
+
+  // Hitung pengambilan baru vs sebelumnya
+  const prevStok = stokHarian[today] || {};
+  let warningList = [];
+
+  products.forEach(p=>{
+    const inputVal = parseInt(document.getElementById('stokMobil_'+p.id).value)||0;
+    const prevAmbil = prevStok[p.id] ? prevStok[p.id].awal : 0;
+    const tambahan  = inputVal - prevAmbil; // selisih pengambilan hari ini
+    const gudangSaat = stokGudang[p.id]||0;
+
+    if (tambahan > 0) {
+      // Ada penambahan pengambilan, kurangi gudang
+      if (tambahan > gudangSaat) {
+        warningList.push(`${p.name}: ambil ${tambahan} tapi gudang hanya ${gudangSaat}`);
+      } else {
+        stokGudang[p.id] = gudangSaat - tambahan;
+      }
+    } else if (tambahan < 0) {
+      // Pengurangan pengambilan (koreksi), kembalikan ke gudang
+      stokGudang[p.id] = gudangSaat + Math.abs(tambahan);
+    }
+    stokHarian[today][p.id] = { awal: inputVal };
+  });
+
+  if (warningList.length > 0) {
+    alert('⚠️ Stok gudang tidak cukup untuk:\n' + warningList.join('\n') + '\n\nSilakan cek stok gudang terlebih dahulu.');
+    return;
+  }
+
+  renderJual();
+  renderStok(); // refresh tampilan stok gudang
+  showToast('✓ Stok mobil tersimpan, gudang diperbarui!');
+  await Promise.all([
+    fbSave('config','stok',stokHarian),
+    fbSave('config','stokGudang',stokGudang)
+  ]);
 }
+
 window.saveStokGudang=async function(){
   products.forEach(p=>{stokGudang[p.id]=parseInt(document.getElementById('stokGudang_'+p.id).value)||0;});
   showToast('✓ Stok gudang tersimpan!');
   await fbSave('config','stokGudang',stokGudang);
 }
+
 
 // ── REKAP ─────────────────────────────────────────────────────────
 window.changeRekapDate=function(d){
