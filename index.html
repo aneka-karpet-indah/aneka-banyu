@@ -294,6 +294,10 @@
     </div>
     <div class="toko-sel-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6,9 12,15 18,9"/></svg></div>
   </div>
+  <div class="prod-search-wrap" style="margin-bottom:12px">
+    <span class="prod-search-icon">🔍</span>
+    <input class="prod-search" id="jualSearchInput" placeholder="Cari produk..." oninput="filterJual(this.value)">
+  </div>
   <div class="section-title">Pilih Produk</div>
   <div class="product-grid" id="productGrid"></div>
 </div>
@@ -438,6 +442,7 @@ let rekapDate     = todayKey();
 let rekapTab      = 'trx';
 let stokTab       = 'mobil';
 let prodSearchQ   = '';
+let jualSearchQ   = '';
 
 // ── PIN STATE ─────────────────────────────────────────────────────
 let pinMode      = 'login'; // login | setup | setup2 | change | change2
@@ -594,7 +599,9 @@ function processPinInput() {
     } else {
       if (pinInput === pinFirst) {
         savedPin=pinInput;
+        pinFirst=''; pinInput='';
         fbSave('config','pin',{pin:savedPin});
+        sessionStorage.setItem('ab_unlocked','1');
         document.getElementById('pinScreen').classList.add('hidden');
         showToast('✓ PIN berhasil diubah!');
       } else {
@@ -638,12 +645,19 @@ window.showPage = function(name,btn) {
 }
 
 // ── JUAL ──────────────────────────────────────────────────────────
+window.filterJual=function(q){jualSearchQ=q;renderJual();}
 function renderJual() {
   const tokoEl=document.getElementById('tokoSelName');
   if(selectedToko){tokoEl.textContent=selectedToko.icon+' '+selectedToko.name;tokoEl.classList.remove('placeholder');}
   else{tokoEl.textContent='Pilih toko atau lanjut tanpa toko...';tokoEl.classList.add('placeholder');}
   const today=todayKey(), stok=stokHarian[today]||{};
-  document.getElementById('productGrid').innerHTML=products.map(p=>{
+  const q=jualSearchQ.toLowerCase();
+  const filteredProds=products.filter(p=>p.name.toLowerCase().includes(q)||p.brand.toLowerCase().includes(q)||(p.kategori||'').toLowerCase().includes(q));
+  if(!filteredProds.length){
+    document.getElementById('productGrid').innerHTML='<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">Produk tidak ditemukan</div></div>';
+    return;
+  }
+  document.getElementById('productGrid').innerHTML=filteredProds.map(p=>{
     const s=stok[p.id];
     const terjual=getDateTrx(today).filter(t=>t.prodId===p.id).reduce((sum,t)=>sum+(t.satuan==='satuan'?t.qty:t.qty*p.satuanKarton),0);
     const sisa=s?s.awal-terjual:null, low=sisa!==null&&sisa<5;
