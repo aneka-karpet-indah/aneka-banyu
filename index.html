@@ -432,12 +432,12 @@ function updatePinDots(isError) {
 }
 function processPinInput() {
   if (pinMode === 'login') {
+    savedPin = window._savedPin || savedPin;
     if (pinInput === savedPin) {
       sessionStorage.setItem('ab_unlocked','1');
       document.getElementById('pinScreen').classList.add('hidden');
       pinUnlocked = true;
-      if(typeof updateHeader==='function') updateHeader();
-      if(typeof renderJual==='function') renderJual();
+      if(typeof window._renderApp==='function') window._renderApp();
     } else {
       document.getElementById('pinError').textContent = 'PIN salah, coba lagi';
       updatePinDots(true);
@@ -454,12 +454,12 @@ function processPinInput() {
       savedPin = pinInput;
       pinFirst = ''; pinInput = '';
       if(typeof fbSavePin==='function') fbSavePin(savedPin);
+      window._savedPin = savedPin;
       sessionStorage.setItem('ab_unlocked','1');
       document.getElementById('pinScreen').classList.add('hidden');
       pinUnlocked = true;
       if(typeof showToast==='function') showToast('✓ PIN berhasil dibuat!');
-      if(typeof updateHeader==='function') updateHeader();
-      if(typeof renderJual==='function') renderJual();
+      if(typeof window._renderApp==='function') window._renderApp();
     } else {
       document.getElementById('pinError').textContent = 'PIN tidak cocok, ulangi dari awal';
       updatePinDots(true);
@@ -512,6 +512,7 @@ function forgotPin() {
     if (!confirm('Reset PIN sekarang? Kamu akan diminta buat PIN baru.')) return;
     // Hapus PIN dari Firebase via flag, initPin akan handle setup
     savedPin = '';
+    window._savedPin = '';
     sessionStorage.removeItem('ab_unlocked');
     if (typeof fbSavePin === 'function') fbSavePin('');
     document.getElementById('pinChangeLink').style.display = 'none';
@@ -528,11 +529,12 @@ function forgotPin() {
 }
 
 function initPin() {
+  // Ambil savedPin dari module via window._savedPin
+  savedPin = window._savedPin || '';
   if (sessionStorage.getItem('ab_unlocked') === '1' && savedPin) {
     document.getElementById('pinScreen').classList.add('hidden');
     pinUnlocked = true;
-    if(typeof updateHeader==='function') updateHeader();
-    if(typeof renderJual==='function') renderJual();
+    if(typeof window._renderApp==='function') window._renderApp();
     return;
   }
   if (!savedPin) {
@@ -638,6 +640,10 @@ async function fbLoad() {
     transaksi = {};
     trxSnap.forEach(d=>{transaksi[d.id]=d.data().list||[];});
 
+    // Expose ke global agar non-module script bisa akses
+    window._savedPin  = savedPin;
+    window._renderApp = function() { updateHeader(); renderJual(); };
+
     // Init PIN
     initPin();
   } catch(e) {
@@ -648,7 +654,7 @@ async function fbLoad() {
 
 // ── PIN SYSTEM - fungsi ada di script non-module di atas ─────────
 // fbSavePin dipanggil dari non-module script, harus di-expose ke window
-window.fbSavePin = function(pin) { fbSave('config','pin',{pin:pin}); }
+window.fbSavePin = function(pin) { savedPin = pin; window._savedPin = pin; fbSave('config','pin',{pin:pin}); }
 
 // ── HEADER ────────────────────────────────────────────────────────
 function updateHeader() {
@@ -931,7 +937,7 @@ function renderTokoManage(){
     <div class="toko-card">
       <div class="toko-card-header">
         <div class="toko-card-icon">${t.icon}</div>
-        <input class="toko-card-name-input" value="${t.name}" onchange="tokos[${i}].name=this.value" placeholder="Nama Toko">
+        <input class="toko-card-name-input" value="${t.name}" oninput="setTokoName(${i},this.value)" placeholder="Nama Toko">
         <button class="toko-card-delete" onclick="deleteToko(${i})">✕</button>
       </div>
       <div class="toko-harga-section-label">Harga Khusus (kosongkan = pakai harga default)</div>
@@ -949,6 +955,7 @@ function renderTokoManage(){
       </div>
     </div>`).join('');
 }
+window.setTokoName=function(i,val){tokos[i].name=val;}
 window.setTokoHarga=function(ti,key,val){const v=parseInt(val);if(v>0)tokos[ti].harga[key]=v;else delete tokos[ti].harga[key];}
 window.addNewToko=function(){
   const icons=['🏪','🛒','🏬','🏠','⛺','🌾','🏗️'];
