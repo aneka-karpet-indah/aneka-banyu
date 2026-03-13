@@ -154,11 +154,11 @@
 
   /* REKAP */
   .rekap-date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; background: var(--surface); border-radius: var(--card-radius); padding: 10px 14px; }
-  .date-nav-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; display: flex; align-items: center; transition: color 0.2s; }
-  .date-nav-btn:not(:disabled) { color: var(--text); }
-  .date-nav-btn:disabled { opacity: 0.3; cursor: default; }
-  .date-nav-btn svg { width: 20px; height: 20px; }
-  .date-display { flex: 1; text-align: center; font-weight: 800; font-size: 14px; }
+  .rekap-date-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .rekap-date-input { flex: 1; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800; padding: 9px 12px; text-align: center; cursor: pointer; }
+  .rekap-date-input:focus { outline: none; border-color: var(--accent); }
+  .rekap-today-btn { background: rgba(0,212,170,0.12); border: 1px solid rgba(0,212,170,0.25); border-radius: 10px; color: var(--accent); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800; padding: 9px 12px; cursor: pointer; white-space: nowrap; }
+  .rekap-today-btn:active { opacity: 0.8; }
   .rekap-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
   .rekap-card { background: var(--surface); border-radius: var(--card-radius); padding: 14px; border: 1.5px solid rgba(255,255,255,0.05); }
   .rekap-card.full { grid-column: 1 / -1; }
@@ -313,9 +313,9 @@
 
 <div class="page" id="page-rekap">
   <div class="rekap-date-nav">
-    <button class="date-nav-btn" id="btnDatePrev" onclick="changeRekapDate(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15,18 9,12 15,6"/></svg></button>
-    <div class="date-display" id="rekapDateDisplay"></div>
-    <button class="date-nav-btn" id="btnDateNext" onclick="changeRekapDate(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9,18 15,12 9,6"/></svg></button>
+    <div class="rekap-date-label">📅 Tanggal</div>
+    <input type="date" class="rekap-date-input" id="rekapDateInput" onchange="onRekapDateChange(this.value)">
+    <button class="rekap-today-btn" onclick="goToday()">Hari ini</button>
   </div>
   <div class="rekap-summary" id="rekapSummary"></div>
   <div class="tabs">
@@ -889,19 +889,20 @@ window.saveStokGudang=async function(){
 
 
 // ── REKAP ─────────────────────────────────────────────────────────
-window.changeRekapDate=function(d){
-  const date=new Date(rekapDate+'T00:00:00'); date.setDate(date.getDate()+d);
-  const nk=date.toISOString().split('T')[0];
-  if(nk>todayKey()) return;
-  rekapDate=nk;
-  document.getElementById('btnDateNext').disabled = false;
+window.onRekapDateChange=function(val){
+  if(!val) return;
+  if(val > todayKey()) { document.getElementById('rekapDateInput').value = todayKey(); val = todayKey(); }
+  rekapDate = val;
+  renderRekap();
+}
+window.goToday=function(){
+  rekapDate = todayKey();
+  document.getElementById('rekapDateInput').value = rekapDate;
   renderRekap();
 }
 window.setRekapTab=function(tab,btn){rekapTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRekapContent();}
 function renderRekap(){
-  document.getElementById('rekapDateDisplay').textContent=formatDate(rekapDate);
-  // FIX: tombol maju disabled jika sudah hari ini
-  document.getElementById('btnDateNext').disabled = (rekapDate >= todayKey());
+  document.getElementById('rekapDateInput').value = rekapDate;
   const s=calcStats(rekapDate);
   document.getElementById('rekapSummary').innerHTML=`
     <div class="rekap-card"><div class="rekap-card-label">Pemasukan</div><div class="rekap-card-val green">${formatRpFull(s.pemasukan)}</div></div>
