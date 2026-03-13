@@ -114,11 +114,11 @@
   .qty-btn.minus { background: rgba(255,71,87,0.2); color: var(--danger); }
   .qty-btn.plus { background: rgba(0,212,170,0.2); color: var(--accent); }
   .qty-display { font-family: 'Syne', sans-serif; font-size: 42px; font-weight: 800; width: 80px; text-align: center; }
-  .harga-row { background: var(--surface2); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
-  .harga-row-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-  .harga-input-wrap { flex: 1; display: flex; align-items: center; gap: 6px; }
-  .harga-prefix { color: var(--muted); font-size: 13px; font-weight: 700; }
-  .harga-input { flex: 1; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 900; padding: 8px 10px; text-align: right; -moz-appearance: textfield; min-width: 0; }
+  .harga-row { background: var(--surface2); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+  .harga-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; } .harga-row-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .harga-input-wrap { display: flex; align-items: center; gap: 8px; width: 100%; }
+  .harga-prefix { color: var(--muted); font-size: 15px; font-weight: 700; flex-shrink: 0; }
+  .harga-input { flex: 1; background: var(--bg); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px; color: var(--text); font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 900; padding: 10px 12px; text-align: right; -moz-appearance: textfield; min-width: 0; width: 100%; }
   .harga-input::-webkit-inner-spin-button, .harga-input::-webkit-outer-spin-button { -webkit-appearance: none; }
   .harga-input:focus { outline: none; border-color: var(--accent3); }
   .harga-source { font-size: 10px; padding: 3px 8px; border-radius: 6px; font-weight: 700; flex-shrink: 0; }
@@ -327,6 +327,10 @@
 
 <div class="page" id="page-toko">
   <div class="section-title">Kelola Toko</div>
+  <div class="prod-search-wrap">
+    <span class="prod-search-icon">🔍</span>
+    <input class="prod-search" placeholder="Cari toko..." oninput="filterToko(this.value)" id="tokoSearchManageInput">
+  </div>
   <div id="tokoList"></div>
   <button class="btn-add" onclick="addNewToko()">+ Tambah Toko Baru</button>
   <button class="btn-save-main" onclick="saveTokos()">✓ Simpan Toko</button>
@@ -385,12 +389,14 @@
       <button class="qty-btn plus" onclick="changeQty(1)">+</button>
     </div>
     <div class="harga-row">
-      <div class="harga-row-label">Harga Jual</div>
+      <div class="harga-row-top">
+        <div class="harga-row-label">Harga Jual</div>
+        <div class="harga-source" id="hargaSource">default</div>
+      </div>
       <div class="harga-input-wrap">
         <span class="harga-prefix">Rp</span>
         <input class="harga-input" type="number" id="hargaJualInput" oninput="onHargaManualChange()">
       </div>
-      <div class="harga-source" id="hargaSource">default</div>
     </div>
     <div class="modal-total">
       <div class="modal-total-label">Total Bayar</div>
@@ -887,7 +893,9 @@ window.changeRekapDate=function(d){
   const date=new Date(rekapDate+'T00:00:00'); date.setDate(date.getDate()+d);
   const nk=date.toISOString().split('T')[0];
   if(nk>todayKey()) return;
-  rekapDate=nk; renderRekap();
+  rekapDate=nk;
+  document.getElementById('btnDateNext').disabled = false;
+  renderRekap();
 }
 window.setRekapTab=function(tab,btn){rekapTab=tab;document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderRekapContent();}
 function renderRekap(){
@@ -932,35 +940,73 @@ window.deleteTrx=async function(dk,id){
 }
 
 // ── TOKO MANAGE ───────────────────────────────────────────────────
+let tokoSearchQ = '';
+window.filterToko=function(q){tokoSearchQ=q;renderTokoManage();}
+window.toggleTokoAccordion=function(id){
+  const el=document.getElementById('tacc_'+id);
+  el.classList.toggle('open');
+}
 function renderTokoManage(){
-  document.getElementById('tokoList').innerHTML=tokos.map((t,i)=>`
-    <div class="toko-card">
-      <div class="toko-card-header">
-        <div class="toko-card-icon">${t.icon}</div>
-        <input class="toko-card-name-input" value="${t.name}" oninput="setTokoName(${i},this.value)" placeholder="Nama Toko">
-        <button class="toko-card-delete" onclick="deleteToko(${i})">✕</button>
+  const q=tokoSearchQ.toLowerCase();
+  const filtered=tokos.filter((t,i)=>{ t._idx=i; return t.name.toLowerCase().includes(q); });
+  if(!filtered.length){
+    document.getElementById('tokoList').innerHTML='<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">Toko tidak ditemukan</div></div>';
+    return;
+  }
+  document.getElementById('tokoList').innerHTML=filtered.map(t=>{
+    const i=tokos.indexOf(t);
+    const hargaKhususCount=Object.keys(t.harga||{}).length;
+    return`<div class="prod-accordion-item" id="tacc_${t.id}">
+      <div class="prod-accordion-header" onclick="toggleTokoAccordion('${t.id}')">
+        <div class="prod-accordion-icon icon-color-4">${t.icon}</div>
+        <div class="prod-accordion-info">
+          <div class="prod-accordion-name">${t.name}</div>
+          <div class="prod-accordion-meta">${hargaKhususCount>0?hargaKhususCount+' harga khusus':'Pakai harga default'}</div>
+        </div>
+        <div class="prod-accordion-chevron">▼</div>
       </div>
-      <div class="toko-harga-section-label">Harga Khusus (kosongkan = pakai harga default)</div>
-      <div>
+      <div class="prod-accordion-body">
+        <div class="prod-field-row">
+          <div class="prod-field">
+            <div class="prod-field-label">Nama Toko</div>
+            <input class="prod-field-input" value="${t.name}" oninput="setTokoName(${i},this.value)" placeholder="Nama Toko">
+          </div>
+          <div class="prod-field" style="max-width:60px">
+            <div class="prod-field-label">Ikon</div>
+            <input class="prod-field-input" value="${t.icon}" oninput="setTokoIcon(${i},this.value)" placeholder="🏪" style="text-align:center;font-size:20px">
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-top:14px;margin-bottom:8px;">Harga Khusus <span style="color:var(--accent3);font-size:10px">(kosongkan = pakai harga default)</span></div>
         ${products.map(p=>{
           const kS=p.id+'_satuan',kK=p.id+'_karton';
           return`<div class="toko-prod-harga-block">
             <div class="toko-prod-label">${p.icon} ${p.name}</div>
             <div class="toko-harga-row">
-              <div class="toko-harga-col"><div class="toko-harga-label">Harga/btl (def: ${formatRp(p.hargaJual)})</div><input class="toko-harga-input" type="number" value="${t.harga[kS]||''}" placeholder="${p.hargaJual}" onchange="setTokoHarga(${i},'${kS}',this.value)"></div>
-              ${p.satuanKarton>1?`<div class="toko-harga-col"><div class="toko-harga-label">Harga/krt (def: ${formatRp(p.hargaKartonJual)})</div><input class="toko-harga-input" type="number" value="${t.harga[kK]||''}" placeholder="${p.hargaKartonJual}" onchange="setTokoHarga(${i},'${kK}',this.value)"></div>`:''}
+              <div class="toko-harga-col"><div class="toko-harga-label">Harga/btl (def: ${formatRp(p.hargaJual)})</div><input class="toko-harga-input" type="number" value="${t.harga[kS]||''}" placeholder="${p.hargaJual}" oninput="setTokoHarga(${i},'${kS}',this.value)"></div>
+              ${p.satuanKarton>1?`<div class="toko-harga-col"><div class="toko-harga-label">Harga/krt (def: ${formatRp(p.hargaKartonJual)})</div><input class="toko-harga-input" type="number" value="${t.harga[kK]||''}" placeholder="${p.hargaKartonJual}" oninput="setTokoHarga(${i},'${kK}',this.value)"></div>`:''}
             </div>
           </div>`;
         }).join('')}
+        <button class="prod-delete-btn" onclick="deleteToko(${i})">🗑 Hapus Toko Ini</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 window.setTokoName=function(i,val){tokos[i].name=val;}
+window.setTokoIcon=function(i,val){tokos[i].icon=val;}
 window.setTokoHarga=function(ti,key,val){const v=parseInt(val);if(v>0)tokos[ti].harga[key]=v;else delete tokos[ti].harga[key];}
 window.addNewToko=function(){
   const icons=['🏪','🛒','🏬','🏠','⛺','🌾','🏗️'];
-  tokos.push({id:'toko_'+Date.now(),name:'Toko Baru',icon:icons[tokos.length%icons.length],harga:{}});
-  renderTokoManage(); setTimeout(()=>window.scrollTo(0,document.body.scrollHeight),50);
+  const newToko={id:'toko_'+Date.now(),name:'Toko Baru',icon:icons[tokos.length%icons.length],harga:{}};
+  tokos.push(newToko);
+  tokoSearchQ='';
+  if(document.getElementById('tokoSearchManageInput')) document.getElementById('tokoSearchManageInput').value='';
+  renderTokoManage();
+  setTimeout(()=>{
+    window.scrollTo(0,document.body.scrollHeight);
+    const el=document.getElementById('tacc_'+newToko.id);
+    if(el) el.classList.add('open');
+  },100);
 }
 window.deleteToko=function(i){
   if(!confirm('Hapus toko '+tokos[i].name+'?')) return;
